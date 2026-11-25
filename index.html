@@ -56,6 +56,14 @@
   .outfit.sel { border-color:#ffd94d; }
   .outfit .owned { color:#7be495; font-size:12px; font-weight:800; }
 
+  /* pets */
+  .petRow { display:flex; gap:8px; }
+  .petBtn { flex:1; background:#12152a; border:3px solid #39406e; border-radius:14px; padding:8px 4px 6px; text-align:center; color:#fff; }
+  .petBtn canvas { display:block; margin:0 auto 2px; }
+  .petBtn .pname { font-size:13px; font-weight:900; }
+  .petBtn .pperk { font-size:10.5px; font-weight:700; color:#9fd8ff; line-height:1.25; }
+  .petBtn.sel { border-color:#ffd94d; box-shadow:0 0 0 2px #ffd94d inset; }
+
   /* missions */
   .mission { display:flex; align-items:center; gap:10px; background:#12152a; border-radius:12px; padding:9px 10px; margin-bottom:8px; }
   .mission .mtxt { flex:1; font-size:14px; font-weight:700; }
@@ -89,6 +97,7 @@
   #abilityBtn { right:132px; bottom:74px; width:64px; height:64px; font-size:12px; background:radial-gradient(circle at 35% 30%, #7ac7ff, #1f5fd9); }
   #abilityBtn.cd { filter:grayscale(.8) brightness(.6); }
   #healBtn { right:34px; bottom:206px; width:58px; height:58px; font-size:12px; background:radial-gradient(circle at 35% 30%, #ff9ec4, #c2185b); }
+  #swapBtn { right:140px; bottom:152px; width:58px; height:58px; font-size:11px; background:radial-gradient(circle at 35% 30%, #ffb74d, #e65100); }
   #muteBtn { position:absolute; top:118px; right:8px; width:42px; height:42px; border-radius:12px; background:rgba(10,12,26,.72); border:2px solid rgba(255,255,255,.25); font-size:19px; pointer-events:auto; }
   #desktopHint { position:absolute; bottom:8px; left:0; right:0; text-align:center; font-size:12px; color:rgba(255,255,255,.65); font-weight:700; }
 
@@ -124,9 +133,10 @@
   </div>
   <div id="joyBase" class="hidden"></div><div id="joyKnob" class="hidden"></div>
   <button id="healBtn" class="touchBtn">❤️<br>HEAL</button>
+  <button id="swapBtn" class="touchBtn">🔀<br>SWAP</button>
   <button id="abilityBtn" class="touchBtn">🛡️<br>SHIELD</button>
   <button id="fireBtn" class="touchBtn">FIRE</button>
-  <div id="desktopHint" class="hidden">WASD / Arrows to move · Hold SPACE or mouse to fire · E = Shield · H = Heal</div>
+  <div id="desktopHint" class="hidden">WASD / Arrows to move · Hold SPACE or mouse to fire · Q / Right-click / 🔀 = Swap weapon · E = Shield · H = Heal</div>
 </div>
 
 <!-- ================= HOME ================= -->
@@ -169,6 +179,12 @@
     <div class="card">
       <h3>👕 Outfits (your face always stays visible!)</h3>
       <div class="outfitRow" id="outfitRow"></div>
+    </div>
+
+    <div class="card">
+      <h3>🐾 Your Pet Companion</h3>
+      <div class="petRow" id="petRow"></div>
+      <div class="privacy" id="petDesc"></div>
     </div>
 
     <div class="card">
@@ -230,14 +246,15 @@ const SFX = {
   zone(){ beep(220,.2,'triangle',.05,180); },
   win(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.22,'triangle',.06),i*130)); },
   lose(){ [400,340,280,200].forEach((f,i)=>setTimeout(()=>beep(f,.22,'triangle',.05),i*140)); },
-  click(){ beep(700,.05,'sine',.035); }
+  click(){ beep(700,.05,'sine',.035); },
+  swing(){ beep(340,.09,'sine',.035,110); }
 };
 
 /* ================= SAVE ================= */
 const SAVE_KEY = 'faceRoyaleSaveV1';
 let SAVE;
 function defaultSave(){ return { coins:150, rp:0, name:'', faceMode:'cartoon', faceIdx:0, faceData:null, photoZoom:1,
-  outfit:0, owned:[0], city:'dhaka', muted:false,
+  outfit:0, owned:[0], city:'dhaka', muted:false, pet:'cat',
   daily:{ date:todayStr(), claimed:false, kills:0, top3:false, cities:[], claimedMissions:[] },
   stats:{ matches:0, wins:0, kills:0, best:20 } }; }
 function loadSave(){ try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if(s && s.coins!==undefined){ const d = defaultSave(); const merged = Object.assign(d, s); merged.daily = Object.assign(defaultSave().daily, s.daily||{}); merged.stats = Object.assign(defaultSave().stats, s.stats||{}); SAVE = merged; } else SAVE = defaultSave(); }catch(e){ SAVE = defaultSave(); }
@@ -318,35 +335,146 @@ function reprocessPhotoFromData(){
 
 /* ================= OUTFITS ================= */
 const OUTFITS = [
-  { name:'Street Legend', price:0,    body:'#607d8b', trim:'#37474f', style:'hoodie' },
-  { name:'Cyber Warrior', price:200,  body:'#00acc1', trim:'#006064', style:'cyber' },
-  { name:'Shadow Ninja',  price:350,  body:'#37474f', trim:'#11181d', style:'ninja' },
-  { name:'Space Rookie',  price:500,  body:'#eceff1', trim:'#fb8c00', style:'space' },
-  { name:'Royal Boss',    price:750,  body:'#6a1b9a', trim:'#ffd94d', style:'royal' },
-  { name:'Dino Madness',  price:1000, body:'#43a047', trim:'#1b5e20', style:'dino' }
+  { name:'Street Legend', price:0,    body:'#607d8b', trim:'#37474f', legs:'#37474f', style:'hoodie' },
+  { name:'Cyber Warrior', price:200,  body:'#00acc1', trim:'#006064', legs:'#263238', style:'cyber' },
+  { name:'Shadow Ninja',  price:350,  body:'#37474f', trim:'#11181d', legs:'#11181d', style:'ninja' },
+  { name:'Space Rookie',  price:500,  body:'#eceff1', trim:'#fb8c00', legs:'#cfd8dc', style:'space' },
+  { name:'Royal Boss',    price:750,  body:'#6a1b9a', trim:'#ffd94d', legs:'#4a1163', style:'royal' },
+  { name:'Dino Madness',  price:1000, body:'#43a047', trim:'#1b5e20', legs:'#2e7d32', style:'dino' }
 ];
-function drawFighterBody(ctx, outfitIdx, cx, cy, bodyR, angle, isPlayer){
-  const o = OUTFITS[outfitIdx % OUTFITS.length];
-  ctx.save(); ctx.translate(cx, cy);
+/* ================= PETS ================= */
+const PETS = {
+  cat:   { name:'Cat',   perk:'⚡ +10% move speed',        desc:'⚡ Whiskers the Cat: +10% move speed in every match!' },
+  dog:   { name:'Dog',   perk:'👃 Loot glows on your map', desc:'👃 Biscuit the Dog: loot sparkles in the arena and glows on your minimap!' },
+  panda: { name:'Panda', perk:'💚 Slowly heals you',       desc:'💚 Bao the Panda: slowly restores your HP up to 50 while you fight!' }
+};
+function drawPet(c, type, x, y, s, ph, dir){
+  c.save(); c.translate(x, y); c.scale((dir || 1) * s, s);
+  const bob = Math.sin(ph) * 0.9, wag = Math.sin(ph * 1.6) * 3, st = Math.sin(ph) * 1.8;
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(0, 9, 11, 3.8, 0, 0, 7); c.fill();
+  c.translate(0, bob * 0.35);
+  if(type === 'cat'){
+    c.fillStyle = '#d97f26'; c.beginPath(); c.ellipse(-6, 8.4 + st * 0.4, 3, 2, 0, 0, 7); c.ellipse(5, 8.4 - st * 0.4, 3, 2, 0, 0, 7); c.fill();
+    c.strokeStyle = '#e07f2e'; c.lineWidth = 3; c.lineCap = 'round'; c.beginPath(); c.moveTo(-11, 1); c.quadraticCurveTo(-16, -3, -14, -8 + wag); c.stroke();
+    c.fillStyle = '#f2a65a'; c.beginPath(); c.ellipse(0, 2, 12, 8, 0, 0, 7); c.fill();
+    c.strokeStyle = '#d97f26'; c.lineWidth = 2; c.beginPath(); c.moveTo(-4, -3); c.lineTo(-4, 6); c.moveTo(1, -4); c.lineTo(1, 7); c.stroke();
+    c.fillStyle = '#f2a65a'; c.beginPath(); c.arc(10, -3, 6.4, 0, 7); c.fill();
+    c.beginPath(); c.moveTo(5.5, -8); c.lineTo(7.5, -13); c.lineTo(9.5, -8.5); c.fill(); c.beginPath(); c.moveTo(11, -8.8); c.lineTo(14, -12.5); c.lineTo(15, -7.6); c.fill();
+    c.fillStyle = '#263238'; c.beginPath(); c.arc(11.5, -3.6, 1.3, 0, 7); c.fill();
+    c.fillStyle = '#ff8a80'; c.beginPath(); c.arc(13.6, -1.6, 1.1, 0, 7); c.fill();
+  } else if(type === 'dog'){
+    c.fillStyle = '#8d5a2b'; c.beginPath(); c.ellipse(-6, 8.6 + st * 0.4, 3.2, 2.1, 0, 0, 7); c.ellipse(5, 8.6 - st * 0.4, 3.2, 2.1, 0, 0, 7); c.fill();
+    c.strokeStyle = '#8d5a2b'; c.lineWidth = 3.4; c.lineCap = 'round'; c.beginPath(); c.moveTo(-11, 0); c.quadraticCurveTo(-15, -4, -13, -7 + wag * 1.4); c.stroke();
+    c.fillStyle = '#b07a45'; c.beginPath(); c.ellipse(0, 2, 12.5, 8.4, 0, 0, 7); c.fill();
+    c.fillStyle = '#96622f'; c.beginPath(); c.ellipse(-3, 4, 5, 3.4, 0, 0, 7); c.fill();
+    c.fillStyle = '#b07a45'; c.beginPath(); c.arc(10, -2.6, 6.6, 0, 7); c.fill();
+    c.fillStyle = '#8d5a2b'; c.beginPath(); c.ellipse(6.4, -4.2, 3, 5, 0.5, 0, 7); c.fill();
+    c.fillStyle = '#d7a05f'; c.beginPath(); c.ellipse(14.6, -0.6, 3.6, 2.8, 0, 0, 7); c.fill();
+    c.fillStyle = '#263238'; c.beginPath(); c.arc(16.9, -1.7, 1.5, 0, 7); c.arc(11, -3.8, 1.3, 0, 7); c.fill();
+  } else { // panda
+    c.fillStyle = '#37474f'; c.beginPath(); c.ellipse(-6, 8.6 + st * 0.3, 3.2, 2.1, 0, 0, 7); c.ellipse(5, 8.6 - st * 0.3, 3.2, 2.1, 0, 0, 7); c.fill();
+    c.fillStyle = '#fafafa'; c.beginPath(); c.ellipse(0, 2, 12, 8.6, 0, 0, 7); c.fill();
+    c.fillStyle = '#37474f'; c.beginPath(); c.ellipse(-2, 1, 4.6, 5.6, 0, 0, 7); c.fill();
+    c.fillStyle = '#fafafa'; c.beginPath(); c.arc(10, -3, 6.8, 0, 7); c.fill();
+    c.fillStyle = '#263238'; c.beginPath(); c.arc(5.2, -8.4, 2.9, 0, 7); c.arc(14.8, -8.4, 2.9, 0, 7); c.fill();
+    c.beginPath(); c.ellipse(8.6, -3.8, 2.2, 2.9, -0.4, 0, 7); c.ellipse(12.6, -3.8, 2.2, 2.9, 0.4, 0, 7); c.fill();
+    c.fillStyle = '#fafafa'; c.beginPath(); c.arc(9.2, -3.4, 1.05, 0, 7); c.arc(12, -3.4, 1.05, 0, 7); c.fill();
+    c.fillStyle = '#263238'; c.beginPath(); c.arc(11.4, -1.4, 1.2, 0, 7); c.fill();
+  }
+  c.restore();
+}
+/* ================= WEAPON SHAPES (drawn pointing +X, grip at origin) ================= */
+function drawWeaponShape(c, wk){
+  c.save();
+  if(wk === 'knife'){
+    c.fillStyle = '#6d4c41'; c.fillRect(-3, -2.2, 8, 4.4);
+    c.fillStyle = '#cfd8dc'; c.beginPath(); c.moveTo(5, -2.6); c.lineTo(19, -0.6); c.lineTo(20, 1.2); c.lineTo(5, 2.4); c.fill();
+    c.fillStyle = '#90a4ae'; c.fillRect(4, -3, 2, 6);
+  } else if(wk === 'axe'){
+    c.strokeStyle = '#8d6e63'; c.lineWidth = 4.5; c.lineCap = 'round'; c.beginPath(); c.moveTo(-4, 0); c.lineTo(17, 0); c.stroke();
+    c.fillStyle = '#b0bec5'; c.beginPath(); c.moveTo(12, -8); c.lineTo(21, -6.5); c.lineTo(21, 6.5); c.lineTo(12, 8); c.lineTo(15.5, 0); c.fill();
+    c.fillStyle = '#78909c'; c.fillRect(10.5, -3.4, 3.4, 6.8);
+  } else if(wk === 'oldpistol' || wk === 'pistol'){
+    c.fillStyle = '#263238'; c.fillRect(0, -3, 19, 6); c.fillRect(1, 2, 5, 7);
+    c.fillStyle = '#546e7a'; c.fillRect(16, -1.8, 4, 3.6);
+  } else if(wk === 'smg'){
+    c.fillStyle = '#263238'; c.fillRect(0, -3.4, 25, 6.8); c.fillRect(9, 2.5, 4.5, 8); c.fillRect(-4, -2.4, 5, 4.8);
+    c.fillStyle = '#546e7a'; c.fillRect(23, -2, 5, 4);
+  } else if(wk === 'shotgun'){
+    c.fillStyle = '#263238'; c.fillRect(0, -4, 31, 8); c.fillRect(-5, -3, 6, 6);
+    c.fillStyle = '#8d6e63'; c.fillRect(11, -4.8, 10, 9.6);
+    c.fillStyle = '#546e7a'; c.fillRect(29, -2.6, 5, 5.2);
+  } else if(wk === 'rifle'){
+    c.fillStyle = '#263238'; c.fillRect(0, -3, 34, 6); c.fillRect(12, 2.5, 5, 9); c.fillRect(-6, -2.6, 7, 5.2);
+    c.fillStyle = '#546e7a'; c.fillRect(32, -1.8, 5, 3.6);
+  } else if(wk === 'sniper'){
+    c.fillStyle = '#263238'; c.fillRect(0, -2.6, 42, 5.2); c.fillRect(-6, -2.2, 7, 4.4); c.fillRect(10, 2, 4, 6); c.fillRect(13, -6.5, 9, 3.6);
+    c.fillStyle = '#546e7a'; c.fillRect(40, -1.4, 6, 2.8);
+    c.fillStyle = '#81d4fa'; c.fillRect(20, -5.8, 2.4, 2.2);
+  }
+  c.restore();
+}
+/* ================= FULL-BODY CHARACTER (v2) =================
+   Local space: origin at the fighter's ground centre. Feet ≈ +14,
+   torso centre ≈ -4, head centre ≈ -22 (head = the photo/cartoon face,
+   tilting toward the aim). Legs run a walk cycle along moveAng; the
+   weapon arm rotates to the aim angle (melee weapons sweep on swing). */
+function drawCharacter(c, o){
+  const out = OUTFITS[o.outfit % OUTFITS.length];
+  const w = o.weapon ? WEAPONS[o.weapon] : null;
+  const aim = o.aim || 0, mA = (o.moveAng !== undefined && o.moveAng !== null) ? o.moveAng : aim;
+  const wk = o.walk || 0;
+  c.save(); c.translate(o.x, o.y); if(o.rot) c.rotate(o.rot); if(o.alpha !== undefined && o.alpha !== null) c.globalAlpha = o.alpha; c.scale(o.s || 1, o.s || 1);
   // shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(0, bodyR*0.95, bodyR*1.05, bodyR*0.45, 0, 0, 7); ctx.fill();
-  // little legs/feet hint (bobblehead: compact body)
-  ctx.fillStyle = o.trim; ctx.beginPath(); ctx.arc(-bodyR*0.45, bodyR*0.85, bodyR*0.32, 0, 7); ctx.arc(bodyR*0.45, bodyR*0.85, bodyR*0.32, 0, 7); ctx.fill();
-  // body
-  ctx.fillStyle = o.body; ctx.beginPath(); ctx.arc(0, bodyR*0.25, bodyR, 0, 7); ctx.fill();
-  ctx.lineWidth = 2.5; ctx.strokeStyle = o.trim; ctx.stroke();
-  // style details (never near the face — face is drawn after, above)
-  if(o.style==='hoodie'){ ctx.strokeStyle=o.trim; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0, bodyR*0.3, bodyR*0.55, 0.2*Math.PI, 0.8*Math.PI); ctx.stroke(); }
-  if(o.style==='cyber'){ ctx.strokeStyle='#a7ffeb'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(-bodyR*0.5,bodyR*0.1); ctx.lineTo(bodyR*0.2,bodyR*0.1); ctx.lineTo(bodyR*0.2,bodyR*0.6); ctx.stroke(); ctx.fillStyle='#a7ffeb'; ctx.beginPath(); ctx.arc(bodyR*0.2,bodyR*0.6,3,0,7); ctx.fill(); }
-  if(o.style==='ninja'){ ctx.fillStyle=o.trim; ctx.fillRect(-bodyR*0.7, bodyR*0.35, bodyR*1.4, bodyR*0.28); }
-  if(o.style==='space'){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0, bodyR*0.35, bodyR*0.42, 0, 7); ctx.fill(); ctx.fillStyle='#fb8c00'; ctx.beginPath(); ctx.arc(0, bodyR*0.35, bodyR*0.2, 0, 7); ctx.fill(); }
-  if(o.style==='royal'){ ctx.strokeStyle='#ffd94d'; ctx.lineWidth=3.5; ctx.beginPath(); ctx.arc(0, bodyR*0.25, bodyR*0.72, 0, 7); ctx.stroke(); }
-  if(o.style==='dino'){ ctx.fillStyle='#c8e6c9'; ctx.beginPath(); ctx.ellipse(0, bodyR*0.5, bodyR*0.5, bodyR*0.42, 0, 0, 7); ctx.fill(); ctx.fillStyle=o.trim; for(let s=-1;s<=1;s++){ ctx.beginPath(); ctx.moveTo(s*bodyR*0.4-5, -bodyR*0.55); ctx.lineTo(s*bodyR*0.4+5, -bodyR*0.55); ctx.lineTo(s*bodyR*0.4, -bodyR*0.95); ctx.fill(); } }
-  // gun toward aim angle
-  ctx.rotate(angle);
-  ctx.fillStyle = '#263238'; ctx.fillRect(bodyR*0.55, -3.5, bodyR*0.95, 7);
-  ctx.fillStyle = '#546e7a'; ctx.fillRect(bodyR*1.28, -2, bodyR*0.28, 4);
-  ctx.restore();
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(0, 15, 15, 6, 0, 0, 7); c.fill();
+  // behind-body extras: royal cape, dino tail, space backpack
+  if(out.style === 'royal'){ c.fillStyle = '#4a1163'; c.beginPath(); c.moveTo(-9, -13); c.quadraticCurveTo(-14 - Math.cos(mA) * 8, 4, -Math.cos(mA) * 12, 18); c.lineTo(12 - Math.cos(mA) * 12, 18); c.quadraticCurveTo(13, 2, 9, -13); c.fill(); }
+  if(out.style === 'dino'){ c.fillStyle = out.trim; const tx = -Math.cos(mA), ty = -Math.sin(mA); c.beginPath(); c.moveTo(tx * 6 - 4, 8 + ty * 3); c.lineTo(tx * 24, 14 + ty * 6); c.lineTo(tx * 6 + 5, 12 + ty * 3); c.fill(); }
+  if(out.style === 'space'){ c.fillStyle = '#b0bec5'; rr(c, -7, -13, 14, 10, 4); c.fill(); }
+  // legs — walk cycle along the move direction
+  c.lineCap = 'round';
+  for(const sgn of [-1, 1]){
+    const swg = o.moving ? Math.sin(wk) * 6.2 * sgn : 2.2 * sgn;
+    const px = Math.cos(mA + Math.PI / 2) * 5.2 * sgn, py = Math.sin(mA + Math.PI / 2) * 2 * sgn;
+    const fx = px + Math.cos(mA) * swg, fy = 13.5 + Math.sin(mA) * swg * 0.45 - (o.moving ? Math.abs(Math.sin(wk)) * 1.8 : 0);
+    c.strokeStyle = out.legs; c.lineWidth = 6.4;
+    c.beginPath(); c.moveTo(px * 0.5, 2); c.lineTo(fx, fy); c.stroke();
+    c.fillStyle = out.style === 'space' ? '#fb8c00' : '#263238'; c.beginPath(); c.arc(fx, fy + 1.2, 3.6, 0, 7); c.fill();
+  }
+  // torso — each outfit is a distinct clothing set
+  c.fillStyle = out.body; rr(c, -11.5, -14, 23, 21, 8); c.fill();
+  c.lineWidth = 2; c.strokeStyle = out.trim; c.stroke();
+  if(out.style === 'hoodie'){ c.fillStyle = 'rgba(0,0,0,.18)'; rr(c, -6, 0, 12, 6.5, 3); c.fill(); c.strokeStyle = '#eceff1'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-2.5, -11); c.lineTo(-2.5, -6); c.moveTo(2.5, -11); c.lineTo(2.5, -6); c.stroke(); }
+  if(out.style === 'cyber'){ c.strokeStyle = '#a7ffeb'; c.lineWidth = 1.8; c.beginPath(); c.moveTo(-7, -8); c.lineTo(1, -8); c.lineTo(1, 1); c.lineTo(7, 1); c.stroke(); c.fillStyle = '#a7ffeb'; c.beginPath(); c.arc(7, 1, 2.2, 0, 7); c.fill(); c.fillStyle = out.trim; rr(c, -14.5, -13, 5, 9, 2); c.fill(); rr(c, 9.5, -13, 5, 9, 2); c.fill(); }
+  if(out.style === 'ninja'){ c.fillStyle = '#c62828'; c.save(); c.beginPath(); rr(c, -11.5, -14, 23, 21, 8); c.clip(); c.rotate(0.6); c.fillRect(-14, -4, 28, 5); c.restore(); c.fillStyle = '#11181d'; c.fillRect(-11.5, 2.5, 23, 3.6); }
+  if(out.style === 'space'){ c.fillStyle = '#fff'; c.beginPath(); c.arc(0, -4, 6.4, 0, 7); c.fill(); c.fillStyle = '#fb8c00'; c.beginPath(); c.arc(0, -4, 3.4, 0, 7); c.fill(); c.strokeStyle = '#90a4ae'; c.lineWidth = 1.6; c.strokeRect(-9, -12, 5, 4); }
+  if(out.style === 'royal'){ c.strokeStyle = '#ffd94d'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(-8, -13); c.lineTo(0, -2); c.lineTo(8, -13); c.stroke(); c.fillStyle = '#ffd94d'; c.beginPath(); c.arc(0, -1, 2.4, 0, 7); c.fill(); }
+  if(out.style === 'dino'){ c.fillStyle = '#c8e6c9'; c.beginPath(); c.ellipse(0, -2, 6.8, 8, 0, 0, 7); c.fill(); c.fillStyle = out.trim; for(let s2 = -1; s2 <= 1; s2++){ c.beginPath(); c.moveTo(s2 * 6 - 3, -13); c.lineTo(s2 * 6 + 3, -13); c.lineTo(s2 * 6, -18.5); c.fill(); } }
+  // free arm — swings against the walk cycle
+  const fa = o.moving ? -Math.sin(wk) * 3.4 : 1.2;
+  c.strokeStyle = out.trim; c.lineWidth = 5.4; c.beginPath(); c.moveTo(-10, -9); c.lineTo(-14.5, -1 + fa); c.stroke();
+  c.fillStyle = '#f1c27d'; c.beginPath(); c.arc(-14.5, -1 + fa, 2.9, 0, 7); c.fill();
+  // weapon arm + held weapon, rotating to the aim (melee sweeps while swinging)
+  let wRot = aim;
+  if(w && w.melee && o.swingT > 0){ const p = 1 - o.swingT / 0.24; wRot = aim - 2.1 + p * 2.8; }
+  const rec = (o.recoilT || 0) * 55;
+  c.save(); c.translate(3, -7); c.rotate(wRot);
+  c.strokeStyle = out.trim; c.lineWidth = 5.4; c.beginPath(); c.moveTo(-2, 1.5); c.lineTo(9, 0); c.stroke();
+  if(o.weapon){ c.save(); c.translate(9 - rec, 0); drawWeaponShape(c, o.weapon); c.restore(); }
+  c.fillStyle = '#f1c27d'; c.beginPath(); c.arc(9 - rec * 0.4, 0, 2.9, 0, 7); c.fill();
+  if(w && !w.melee && o.weapon !== 'oldpistol' && o.weapon !== 'pistol'){ c.beginPath(); c.arc(19 - rec, 1.5, 2.6, 0, 7); c.fill(); }
+  c.restore();
+  // head — the face itself, tilting toward the aim
+  const hx = Math.cos(aim) * 2.6, hy = -22 + Math.sin(aim) * 1.3;
+  if(out.style === 'hoodie'){ c.fillStyle = out.trim; c.beginPath(); c.arc(hx, hy + 1.5, 15.6, 0, 7); c.fill(); }
+  if(out.style === 'dino'){ c.fillStyle = out.body; c.beginPath(); c.arc(hx, hy + 0.5, 15.2, Math.PI * 0.95, Math.PI * 2.05); c.fill(); }
+  if(o.player){ c.lineWidth = 3; c.strokeStyle = '#ffd94d'; c.beginPath(); c.arc(hx, hy, 14.9, 0, 7); c.stroke(); }
+  if(o.face) drawFaceCircle(c, o.face, hx, hy, 13.4);
+  if(out.style === 'royal'){ c.fillStyle = '#ffd94d'; c.beginPath(); c.moveTo(hx - 6, hy - 12.4); c.lineTo(hx - 6, hy - 17.5); c.lineTo(hx - 3, hy - 14.6); c.lineTo(hx, hy - 18.4); c.lineTo(hx + 3, hy - 14.6); c.lineTo(hx + 6, hy - 17.5); c.lineTo(hx + 6, hy - 12.4); c.fill(); }
+  if(out.style === 'cyber'){ c.strokeStyle = '#a7ffeb'; c.lineWidth = 2; c.beginPath(); c.arc(hx, hy - 2, 14.6, Math.PI * 1.15, Math.PI * 1.85); c.stroke(); }
+  // hit flash
+  if(o.flash > 0){ c.fillStyle = 'rgba(255,60,40,' + clamp(o.flash * 2.2, 0, .55) + ')'; c.beginPath(); c.arc(hx, hy, 13.4, 0, 7); c.fill(); c.beginPath(); c.ellipse(0, -4, 11.5, 10.5, 0, 0, 7); c.fill(); }
+  c.restore();
 }
 
 /* ================= CITIES ================= */
@@ -496,11 +624,10 @@ function drawLobby(){
   ctx.clearRect(0,0,240,270);
   const g = ctx.createRadialGradient(120,120,20,120,130,170); g.addColorStop(0,'#2c3560'); g.addColorStop(1,'#171b36');
   ctx.fillStyle = g; rr(ctx,4,4,232,262,18); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.beginPath(); ctx.arc(120,128,92,0,7); ctx.fill();
-  drawFighterBody(ctx, SAVE.outfit, 120, 178, 37, -0.5, true);
-  // bobblehead: oversized face
-  ctx.save(); ctx.lineWidth = 6; ctx.strokeStyle = '#ffd94d'; ctx.beginPath(); ctx.arc(120,104,58,0,7); ctx.stroke(); ctx.restore();
-  drawFaceCircle(ctx, currentFaceSource(), 120, 104, 55);
+  ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.beginPath(); ctx.ellipse(118,182,98,54,0,0,7); ctx.fill();
+  // full-body fighter: photo head + outfit body + held weapon, pet beside him
+  drawPet(ctx, SAVE.pet || 'cat', 188, 210, 1.5, 1.2, 1);
+  drawCharacter(ctx, { x:102, y:160, s:1.85, outfit:SAVE.outfit, face:currentFaceSource(), aim:-0.55, moveAng:0.9, walk:0.7, moving:false, weapon:'pistol', player:true, flash:0 });
   ctx.fillStyle = '#fff'; ctx.font = '900 19px sans-serif'; ctx.textAlign = 'center';
   ctx.fillText(SAVE.name || 'YOU', 120, 252);
 }
@@ -518,7 +645,7 @@ function refreshHome(){
   $('zoomSlider').value = Math.round((SAVE.photoZoom || 1) * 100);
   drawLobby();
   document.querySelectorAll('.cityCard').forEach(el => el.classList.toggle('sel', el.dataset.city === SAVE.city));
-  buildOutfits(); buildMissions();
+  buildOutfits(); buildMissions(); buildPets();
   const dc = $('dailyClaim');
   if(SAVE.daily.claimed){ dc.textContent = '✅ CLAIMED'; dc.disabled = true; } else { dc.textContent = 'CLAIM 100 🪙'; dc.disabled = false; }
 }
@@ -538,8 +665,7 @@ function buildOutfits(){
     const d = document.createElement('button'); d.className = 'outfit' + (SAVE.outfit === i ? ' sel' : '');
     const cv = document.createElement('canvas'); cv.width = cv.height = 64;
     const x = cv.getContext('2d');
-    drawFighterBody(x, i, 32, 34, 15, 0.6, false);
-    drawFaceCircle(x, cartoonFaces[0], 32, 16, 13);
+    drawCharacter(x, { x:30, y:32, s:0.66, outfit:i, face:cartoonFaces[0], aim:0.55, moveAng:1.2, walk:0.8, moving:false, weapon:'pistol', player:false, flash:0 });
     d.appendChild(cv);
     const nm = document.createElement('div'); nm.className = 'oname'; nm.textContent = o.name; d.appendChild(nm);
     const pr = document.createElement('div');
@@ -567,6 +693,21 @@ function buildMissions(){
     d.appendChild(b); list.appendChild(d);
   });
 }
+function buildPets(){
+  const row = $('petRow'); if(!row) return; row.innerHTML = '';
+  Object.keys(PETS).forEach(k => {
+    const p = PETS[k];
+    const b = document.createElement('button'); b.className = 'petBtn' + (SAVE.pet === k ? ' sel' : ''); b.dataset.pet = k;
+    const cv = document.createElement('canvas'); cv.width = 72; cv.height = 46;
+    drawPet(cv.getContext('2d'), k, 36, 21, 1.55, 0.8, 1);
+    b.appendChild(cv);
+    const nm = document.createElement('div'); nm.className = 'pname'; nm.textContent = p.name; b.appendChild(nm);
+    const pk = document.createElement('div'); pk.className = 'pperk'; pk.textContent = p.perk; b.appendChild(pk);
+    b.onclick = () => { SAVE.pet = k; persist(); SFX.click(); refreshHome(); toast('🐾 ' + p.desc); };
+    row.appendChild(b);
+  });
+  const d = $('petDesc'); if(d) d.textContent = PETS[SAVE.pet || 'cat'].desc + ' Your pet follows you into every match!';
+}
 /* home events */
 $('nameInput').addEventListener('input', e => { SAVE.name = e.target.value.slice(0,16); persist(); drawLobby(); });
 $('photoBtn').onclick = () => $('photoInput').click();
@@ -590,9 +731,12 @@ window.addEventListener('resize', resize); resize();
 const WEAPONS = {
   oldpistol: { name:'Old Pistol', icon:'🔫', dmg:8,  range:320, rate:340,  bspeed:660,  spread:.06,  pellets:1, tier:0, col:'#ffd54f' },
   pistol:    { name:'Pistol',     icon:'🔫', dmg:11, range:350, rate:300,  bspeed:700,  spread:.05,  pellets:1, tier:1, col:'#ffd54f' },
+  smg:       { name:'SMG',        icon:'🔫', dmg:6,  range:330, rate:88,   bspeed:730,  spread:.11,  pellets:1, tier:2, col:'#a5d6a7' },
   shotgun:   { name:'Shotgun',    icon:'💥', dmg:7,  range:215, rate:950,  bspeed:600,  spread:.30,  pellets:6, tier:2, col:'#ff8a65' },
   rifle:     { name:'Rifle',      icon:'🎯', dmg:9,  range:445, rate:125,  bspeed:800,  spread:.075, pellets:1, tier:3, col:'#81d4fa' },
-  sniper:    { name:'Sniper',     icon:'🔭', dmg:46, range:700, rate:1500, bspeed:1080, spread:.006, pellets:1, tier:4, col:'#ce93d8' }
+  sniper:    { name:'Sniper',     icon:'🔭', dmg:46, range:700, rate:1500, bspeed:1080, spread:.006, pellets:1, tier:4, col:'#ce93d8' },
+  knife:     { name:'Knife',      icon:'🔪', dmg:22, range:48,  rate:360,  melee:true, tier:1, col:'#cfd8dc' },
+  axe:       { name:'Axe',        icon:'🪓', dmg:40, range:56,  rate:640,  melee:true, tier:2, col:'#ffb74d' }
 };
 const BOT_DEFS = [
   ['NoobSlayer99','agg'],['BoomHeadshot','agg'],['RageQuitRick','agg'],['BananaSniper','agg'],['DarthDoodle','agg'],['TurboPickle','agg'],
@@ -610,7 +754,7 @@ const ZONE_SEGS = [
   [180,200,640,640,3], [200,255,640,330,4], [255,270,330,330,6], [270,315,330,130,8],
   [315,330,130,130,10], [330,365,130,45,12], [365,9999,45,45,14]
 ];
-let fighters = [], bullets = [], lootArr = [], effects = [];
+let fighters = [], bullets = [], lootArr = [], effects = [], corpses = [];
 let player = null, aliveCount = 0, matchTime = 0, matchOver = false, matchCity = null;
 let zoneCenters = [], crate = null, crateDone = false, bountyDone = false, bountyId = -1, bountyBonus = 0;
 let playerPlacement = 0, cam = { x:0, y:0, s:1 };
@@ -635,18 +779,21 @@ function spawnLoot(n){
   lootArr = [];
   for(let i=0;i<n;i++){ const p = freeSpot(rand(90, WORLD-90), rand(90, WORLD-90), 14); if(pointInBuilding(p.x, p.y, 10)) continue;
     if(Math.random() < 0.38) lootArr.push({ x:p.x, y:p.y, type:'medkit' });
-    else { const roll = Math.random(); const wk = roll < .30 ? 'pistol' : roll < .55 ? 'shotgun' : roll < .83 ? 'rifle' : 'sniper'; lootArr.push({ x:p.x, y:p.y, type:'weapon', wk }); } }
+    else { const roll = Math.random(); const wk = roll < .22 ? 'pistol' : roll < .40 ? 'smg' : roll < .57 ? 'shotgun' : roll < .74 ? 'rifle' : roll < .84 ? 'sniper' : roll < .92 ? 'knife' : 'axe'; lootArr.push({ x:p.x, y:p.y, type:'weapon', wk }); } }
 }
 function makeFighter(x, y, isPlayer, name, persKey, faceSrc, outfitIdx){
+  const petType = isPlayer ? (SAVE.pet || 'cat') : (Math.random() < 0.6 ? ['cat','dog','panda'][irand(0,2)] : null);
   return { x, y, r:15, hp:100, alive:true, isPlayer: !!isPlayer, name, pers: persKey, face: faceSrc, outfit: outfitIdx,
-    weapon:'oldpistol', medkits: isPlayer ? 0 : (Math.random() < .3 ? 1 : 0), kills:0, angle: rand(0, 6.28), aimAngle: 0,
+    weapon:'oldpistol', gun:'oldpistol', melee:null, slot:1, medkits: isPlayer ? 0 : (Math.random() < .3 ? 1 : 0), kills:0, angle: rand(0, 6.28), aimAngle: 0, moveAng: rand(0, 6.28),
+    walkPhase: rand(0, 6), moving:false, recoilT:0, swingT:0, swingAng:0, px:x, py:y,
+    petType, pet: petType ? { x: x + 24, y: y + 16, ph: rand(0, 6), dir: 1 } : null,
     lastShot: -999, thinkT: rand(0, .25), moveTarget: null, combatTarget: null, strafeDir: 1, strafeT: 0, stuckT: 0, lastX: x, lastY: y, avoidT: 0, avoidDir: 1,
     healT: 0, shieldT: 0, shieldCd: 0, crateChaser: false, bounty: false, hitFlash: 0, id: fighters.length };
 }
 function startMatch(){
   matchCity = cityById(SAVE.city);
   genWorld(matchCity); buildZoneCenters(); spawnLoot(48);
-  fighters = []; bullets = []; effects = []; crate = null; crateDone = false; bountyDone = false; bountyId = -1; bountyBonus = 0;
+  fighters = []; bullets = []; effects = []; corpses = []; crate = null; crateDone = false; bountyDone = false; bountyId = -1; bountyBonus = 0;
   matchTime = 0; matchOver = false; playerPlacement = 0;
   const defs = BOT_DEFS.slice();
   const usedPts = [];
@@ -673,21 +820,31 @@ function startMatch(){
   announce('🪂 DROP IN! LOOT UP!', 2200);
   updateWeaponHud();
 }
-function updateWeaponHud(){ if(!player) return; const w = WEAPONS[player.weapon]; $('weaponLabel').textContent = w.icon + ' ' + w.name; $('medkitLabel').textContent = '➕ Medkits: ' + player.medkits + ' (tap ❤️ to heal)'; }
+function swapWeapons(f){
+  if(!f || !f.alive || !f.melee) return false;
+  f.slot = f.slot === 1 ? 2 : 1;
+  f.weapon = f.slot === 2 ? f.melee : f.gun;
+  if(f.isPlayer){ SFX.click(); updateWeaponHud(); }
+  return true;
+}
+function updateWeaponHud(){ if(!player) return; const w = WEAPONS[player.weapon]; $('weaponLabel').textContent = w.icon + ' ' + w.name + (player.slot === 2 ? ' · melee' : ''); $('medkitLabel').textContent = '➕ Medkits: ' + player.medkits + ' (tap ❤️ to heal)';
+  const sb = $('swapBtn'); if(sb) sb.innerHTML = player.melee ? WEAPONS[player.slot === 1 ? player.melee : player.gun].icon + '<br>SWAP' : '🔀<br>SWAP'; }
 /* ================= INPUT ================= */
 canvas.addEventListener('touchstart', e => { if(screen !== 'match') return; for(const t of e.changedTouches){ if(t.clientX < VW * 0.5 && !joy.active){ joy.active = true; joy.id = t.identifier; joy.ox = t.clientX; joy.oy = t.clientY; joy.dx = 0; joy.dy = 0; const b = $('joyBase'), k = $('joyKnob'); b.classList.remove('hidden'); k.classList.remove('hidden'); b.style.left = (t.clientX - 62) + 'px'; b.style.top = (t.clientY - 62) + 'px'; k.style.left = (t.clientX - 28) + 'px'; k.style.top = (t.clientY - 28) + 'px'; } } e.preventDefault(); }, { passive:false });
 canvas.addEventListener('touchmove', e => { if(screen !== 'match') return; for(const t of e.changedTouches){ if(joy.active && t.identifier === joy.id){ let dx = t.clientX - joy.ox, dy = t.clientY - joy.oy; const d = Math.hypot(dx, dy); if(d > 48){ dx = dx / d * 48; dy = dy / d * 48; } joy.dx = dx / 48; joy.dy = dy / 48; const k = $('joyKnob'); k.style.left = (joy.ox + dx - 28) + 'px'; k.style.top = (joy.oy + dy - 28) + 'px'; } } e.preventDefault(); }, { passive:false });
 function joyEnd(e){ for(const t of e.changedTouches){ if(joy.active && t.identifier === joy.id){ joy.active = false; joy.dx = 0; joy.dy = 0; $('joyBase').classList.add('hidden'); $('joyKnob').classList.add('hidden'); } } }
 canvas.addEventListener('touchend', joyEnd); canvas.addEventListener('touchcancel', joyEnd);
-canvas.addEventListener('mousedown', e => { mouse.down = true; mouse.x = e.clientX; mouse.y = e.clientY; mouse.t = matchTime; });
+canvas.addEventListener('mousedown', e => { if(e.button === 2){ if(screen === 'match') swapWeapons(player); return; } mouse.down = true; mouse.x = e.clientX; mouse.y = e.clientY; mouse.t = matchTime; });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
 window.addEventListener('mouseup', () => mouse.down = false);
 canvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; mouse.t = matchTime; });
-window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if(screen === 'match'){ if(e.key === ' ') e.preventDefault(); if(e.key.toLowerCase() === 'e') useAbility(); if(e.key.toLowerCase() === 'h') useHeal(); } });
+window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if(screen === 'match'){ if(e.key === ' ') e.preventDefault(); if(e.key.toLowerCase() === 'e') useAbility(); if(e.key.toLowerCase() === 'h') useHeal(); if(e.key.toLowerCase() === 'q') swapWeapons(player); } });
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 function bindHold(id, on, off){ const el = $(id); el.addEventListener('touchstart', e => { e.preventDefault(); on(); }, { passive:false }); el.addEventListener('touchend', e => { e.preventDefault(); off(); }, { passive:false }); el.addEventListener('mousedown', e => { e.preventDefault(); on(); }); el.addEventListener('mouseup', off); el.addEventListener('mouseleave', off); }
 bindHold('fireBtn', () => firingTouch = true, () => firingTouch = false);
 bindHold('abilityBtn', () => useAbility(), () => {});
 bindHold('healBtn', () => useHeal(), () => {});
+bindHold('swapBtn', () => swapWeapons(player), () => {});
 function useAbility(){ if(screen !== 'match' || !player || !player.alive || player.shieldCd > 0 || player.shieldT > 0) return; player.shieldT = 3; player.shieldCd = 18; SFX.pickup(); }
 function useHeal(){ if(screen !== 'match' || !player || !player.alive || player.healT > 0 || player.medkits <= 0 || player.hp >= 100) return; player.healT = 1.4; }
 /* ================= COMBAT ================= */
@@ -700,8 +857,21 @@ function tryFire(f, ang){
   const w = WEAPONS[f.weapon]; const now = matchTime * 1000;
   if(now - f.lastShot < w.rate || f.healT > 0) return false;
   f.lastShot = now;
-  for(let i=0;i<w.pellets;i++){ const a = ang + rand(-1,1) * w.spread; bullets.push({ x: f.x + Math.cos(ang)*22, y: f.y + Math.sin(ang)*22, vx: Math.cos(a)*w.bspeed, vy: Math.sin(a)*w.bspeed, dmg: w.dmg, from: f, life: w.range / w.bspeed, col: w.col }); }
-  effects.push({ x: f.x + Math.cos(ang)*30, y: f.y + Math.sin(ang)*30, t: .06, max: .06, col: '#ffe082', r: 7 });
+  if(w.melee){
+    f.swingT = 0.24; f.swingAng = ang;
+    if(f.isPlayer) SFX.swing();
+    effects.push({ type:'swing', x: f.x, y: f.y - 6, ang, t: .16, max: .16, col: w.col });
+    for(const o of fighters){ if(o === f || !o.alive) continue;
+      const d = Math.hypot(o.x - f.x, o.y - f.y);
+      if(d > w.range + o.r + 4) continue;
+      let da = Math.atan2(o.y - f.y, o.x - f.x) - ang; while(da > Math.PI) da -= 2 * Math.PI; while(da < -Math.PI) da += 2 * Math.PI;
+      if(Math.abs(da) < 1.05 || d < 24){ if(d < 30 || hasLOS(f, o)) damage(o, w.dmg, f); }
+    }
+    return true;
+  }
+  f.recoilT = 0.085;
+  for(let i=0;i<w.pellets;i++){ const a = ang + rand(-1,1) * w.spread; bullets.push({ x: f.x + Math.cos(ang)*24, y: f.y - 6 + Math.sin(ang)*24, vx: Math.cos(a)*w.bspeed, vy: Math.sin(a)*w.bspeed, dmg: w.dmg, from: f, life: w.range / w.bspeed, col: w.col }); }
+  effects.push({ x: f.x + Math.cos(ang)*34, y: f.y - 6 + Math.sin(ang)*34, t: .06, max: .06, col: '#ffe082', r: 7 });
   if(f.isPlayer) SFX.shoot(f.weapon);
   return true;
 }
@@ -716,6 +886,7 @@ function damage(f, dmg, from){
 }
 function die(f, from){
   f.alive = false; f.hp = 0;
+  corpses.push({ x: f.x, y: f.y, outfit: f.outfit, face: f.isPlayer ? currentFaceSource() : f.face, weapon: f.weapon, aim: f.aimAngle, moveAng: f.moveAng, player: f.isPlayer, rot: rand(1.2, 1.75) * (Math.random() < .5 ? -1 : 1), t: .9, max: .9 });
   if(f.isPlayer) playerPlacement = aliveCount;
   aliveCount--;
   const killer = (from && from !== 'zone') ? from : null;
@@ -730,10 +901,13 @@ function collide(f){ f.x = clamp(f.x, 26, WORLD - 26); f.y = clamp(f.y, 26, WORL
 function pickups(f){
   for(const l of lootArr){ if(l.taken) continue; if(Math.abs(l.x - f.x) > 30 || Math.abs(l.y - f.y) > 30) continue; if(dist2(f, l) > 32 * 32) continue;
     if(l.type === 'medkit'){ if(f.medkits < 3){ f.medkits++; l.taken = true; if(f.isPlayer){ SFX.pickup(); updateWeaponHud(); } } }
-    else if(WEAPONS[l.wk].tier > WEAPONS[f.weapon].tier){ const old = f.weapon; f.weapon = l.wk; l.taken = true; if(old !== 'oldpistol') lootArr.push({ x: f.x + rand(-14,14), y: f.y + rand(-14,14), type: 'weapon', wk: old }); if(f.isPlayer){ SFX.pickup(); updateWeaponHud(); toast('🔫 Picked up: ' + WEAPONS[l.wk].name + '!', 1500); } }
+    else { const w = WEAPONS[l.wk];
+      if(w.melee){ if(!f.melee || w.tier > WEAPONS[f.melee].tier){ const old = f.melee; f.melee = l.wk; l.taken = true; if(f.slot === 2) f.weapon = f.melee; if(old) lootArr.push({ x: f.x + rand(-14,14), y: f.y + rand(-14,14), type: 'weapon', wk: old }); if(f.isPlayer){ SFX.pickup(); updateWeaponHud(); toast(w.icon + ' Picked up: ' + w.name + '! Tap 🔀 to swing it', 1700); } } }
+      else if(w.tier > WEAPONS[f.gun].tier){ const old = f.gun; f.gun = l.wk; l.taken = true; if(f.slot === 1) f.weapon = f.gun; if(old !== 'oldpistol') lootArr.push({ x: f.x + rand(-14,14), y: f.y + rand(-14,14), type: 'weapon', wk: old }); if(f.isPlayer){ SFX.pickup(); updateWeaponHud(); toast('🔫 Picked up: ' + w.name + '!', 1500); } }
+    }
   }
   if(crate && crate.active && dist2(f, crate) < 36 * 36){
-    if(WEAPONS[crate.wk].tier > WEAPONS[f.weapon].tier){ const old = f.weapon; f.weapon = crate.wk; if(old !== 'oldpistol') lootArr.push({ x: f.x, y: f.y, type: 'weapon', wk: old }); }
+    if(WEAPONS[crate.wk].tier > WEAPONS[f.gun].tier){ const old = f.gun; f.gun = crate.wk; if(f.slot === 1) f.weapon = f.gun; if(old !== 'oldpistol') lootArr.push({ x: f.x, y: f.y, type: 'weapon', wk: old }); }
     f.medkits = Math.min(3, f.medkits + 2); crate.active = false;
     fighters.forEach(o => o.crateChaser = false);
     if(f.isPlayer){ announce('🎁 YOU GOT THE MEGA CRATE!', 2000); SFX.pickup(); updateWeaponHud(); } else feed('🎁 ' + f.name + ' grabbed the Mega Crate!');
@@ -741,7 +915,12 @@ function pickups(f){
 }
 /* ================= BOT AI ================= */
 function botThink(b){
-  const P = PERS[b.pers], z = zoneAt(matchTime), w = WEAPONS[b.weapon];
+  const P = PERS[b.pers], z = zoneAt(matchTime);
+  // weapon slots: swing the melee weapon up close, otherwise use the gun
+  const foe0 = nearestEnemy(b), foeD = foe0 ? Math.sqrt(dist2(b, foe0)) : 1e9;
+  b.slot = (b.melee && foeD < 72) ? 2 : 1;
+  b.weapon = b.slot === 2 ? b.melee : b.gun;
+  const w = WEAPONS[b.weapon];
   const dC = Math.hypot(b.x - z.cx, b.y - z.cy), inside = dC < z.r - 40;
   const enemy = nearestEnemy(b), eD = enemy ? Math.sqrt(dist2(b, enemy)) : 1e9;
   if(b.hp < P.healAt && b.medkits > 0 && eD > 330 && b.healT <= 0) b.healT = 1.4;
@@ -769,13 +948,13 @@ function updateBot(b, dt){
   if(t && t.alive){
     const P = PERS[b.pers], w = WEAPONS[b.weapon];
     const d = Math.hypot(t.x - b.x, t.y - b.y), ang = Math.atan2(t.y - b.y, t.x - b.x); b.aimAngle = ang;
-    const want = w.range * P.keep; let vx = 0, vy = 0;
+    const want = w.melee ? w.range * 0.8 : w.range * P.keep; let vx = 0, vy = 0;
     if(d > want + 26){ vx = Math.cos(ang); vy = Math.sin(ang); } else if(d < want - 26){ vx = -Math.cos(ang); vy = -Math.sin(ang); }
     b.strafeT -= dt; if(b.strafeT <= 0){ b.strafeT = rand(.7, 1.6); b.strafeDir *= -1; }
     vx += Math.cos(ang + Math.PI/2) * b.strafeDir * .7; vy += Math.sin(ang + Math.PI/2) * b.strafeDir * .7;
     const l = Math.hypot(vx, vy) || 1; mx = vx / l; my = vy / l;
     b.aimT = (b.aimT || 0) + dt;
-    if(b.aimT > .45 && d < w.range && hasLOS(b, t)) tryFire(b, ang + rand(-P.err, P.err));
+    if(b.aimT > .45 && d < (w.melee ? w.range + 14 : w.range) && hasLOS(b, t)) tryFire(b, ang + rand(-P.err, P.err));
   } else {
     b.aimT = 0;
     if(b.moveTarget){ const dx = b.moveTarget.x - b.x, dy = b.moveTarget.y - b.y, d = Math.hypot(dx, dy); if(d > 14){ mx = dx / d; my = dy / d; b.aimAngle = Math.atan2(dy, dx); b.wantMove = true; } }
@@ -824,20 +1003,37 @@ function update(dt){
     if(keys['a'] || keys['arrowleft']) mx -= 1; if(keys['d'] || keys['arrowright']) mx += 1;
     if(dbgMove){ mx = dbgMove.x; my = dbgMove.y; }
     const ml = Math.hypot(mx, my); if(ml > 1){ mx /= ml; my /= ml; }
-    const sp = 178 * (player.healT > 0 ? .45 : 1);
+    const sp = 178 * (player.healT > 0 ? .45 : 1) * (player.petType === 'cat' ? 1.1 : 1);
     player.x += mx * sp * dt; player.y += my * sp * dt;
     if(ml > .1) player.aimAngle = Math.atan2(my, mx);
     collide(player); pickups(player);
-    if(firingTouch || keys[' '] || mouse.down || dbgFire){ const aim = getAim(); if(aim.ok){ player.aimAngle = aim.ang; tryFire(player, aim.ang); } }
+    if(firingTouch || keys[' '] || mouse.down || dbgFire){ const aim = getAim(); if(aim.ok || WEAPONS[player.weapon].melee){ player.aimAngle = aim.ang; tryFire(player, aim.ang); } }
   }
   // shared fighter timers + zone damage
   for(const f of fighters){ if(!f.alive) continue;
     if(f.shieldT > 0) f.shieldT -= dt; if(f.shieldCd > 0) f.shieldCd -= dt; if(f.hitFlash > 0) f.hitFlash -= dt;
+    if(f.recoilT > 0) f.recoilT -= dt; if(f.swingT > 0) f.swingT -= dt;
+    if(f.isPlayer && f.petType === 'panda' && f.hp > 0 && f.hp < 50) f.hp = Math.min(50, f.hp + dt / 3); // panda passive: slow regen up to 50 HP
     if(f.healT > 0){ f.healT -= dt; if(f.healT <= 0){ f.hp = Math.min(100, f.hp + 55); f.medkits--; effects.push({ x: f.x, y: f.y - 20, t: .5, max: .5, col: '#7be495', r: 12 }); if(f.isPlayer){ SFX.heal(); updateWeaponHud(); } } }
     const dz = Math.hypot(f.x - z.cx, f.y - z.cy);
     if(dz > z.r){ damage(f, z.dmg * dt, 'zone'); if(f.isPlayer && matchTime - zoneWarnT > 1.2){ zoneWarnT = matchTime; SFX.zone(); } }
   }
   for(const f of fighters){ if(f.alive && !f.isPlayer) updateBot(f, dt); }
+  // walk-cycle + pet following (runs on real movement, player and bots alike)
+  for(const f of fighters){
+    const dx = f.x - f.px, dy = f.y - f.py, dd = Math.hypot(dx, dy);
+    f.moving = dd > 22 * dt;
+    if(dd > 0.01){ f.moveAng = Math.atan2(dy, dx); f.walkPhase += dd * 0.075; }
+    f.px = f.x; f.py = f.y;
+    if(f.alive && f.pet){
+      const tx = f.x - Math.cos(f.moveAng) * 27, ty = f.y - Math.sin(f.moveAng) * 27 + 9;
+      const kk = Math.min(1, dt * 5.5);
+      f.pet.x += (tx - f.pet.x) * kk; f.pet.y += (ty - f.pet.y) * kk;
+      f.pet.ph += dt * (f.moving ? 11 : 3.5);
+      if(Math.abs(tx - f.pet.x) > 2) f.pet.dir = tx >= f.pet.x ? 1 : -1;
+    }
+  }
+  for(let i = corpses.length - 1; i >= 0; i--){ corpses[i].t -= dt; if(corpses[i].t <= 0) corpses.splice(i, 1); }
   // bullets
   for(let i = bullets.length - 1; i >= 0; i--){ const b = bullets[i]; b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
     let dead = b.life <= 0 || pointInBuilding(b.x, b.y, 0);
@@ -897,15 +1093,12 @@ function drawLoot(c, l){
   c.restore();
 }
 function drawFighter(c, f){
-  drawFighterBody(c, f.outfit, f.x, f.y, 15, f.aimAngle, f.isPlayer);
-  if(f.shieldT > 0){ c.fillStyle = 'rgba(100,181,246,.16)'; c.beginPath(); c.arc(f.x, f.y - 2, 31, 0, 7); c.fill(); c.strokeStyle = 'rgba(100,181,246,.95)'; c.lineWidth = 3; c.stroke(); }
-  if(f.isPlayer){ c.save(); c.lineWidth = 3.5; c.strokeStyle = '#ffd94d'; c.beginPath(); c.arc(f.x, f.y - 16, 17.5, 0, 7); c.stroke(); c.restore(); }
-  drawFaceCircle(c, f.isPlayer ? currentFaceSource() : f.face, f.x, f.y - 16, 15.5);
-  if(f.hitFlash > 0){ c.fillStyle = 'rgba(255,60,40,' + clamp(f.hitFlash * 2.2, 0, .6) + ')'; c.beginPath(); c.arc(f.x, f.y - 16, 15.5, 0, 7); c.fill(); c.beginPath(); c.arc(f.x, f.y + 4, 15, 0, 7); c.fill(); }
-  if(f.bounty){ c.font = '17px sans-serif'; c.textAlign = 'center'; c.fillText('👑', f.x, f.y - 40); }
-  if(f.hp < 100){ c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(f.x - 18, f.y - 33, 36, 5.5); c.fillStyle = f.isPlayer ? '#7be495' : '#ff8a65'; c.fillRect(f.x - 17, f.y - 32.2, 34 * clamp(f.hp, 0, 100) / 100, 3.8); }
+  drawCharacter(c, { x: f.x, y: f.y, s: 1, outfit: f.outfit, face: f.isPlayer ? currentFaceSource() : f.face, aim: f.aimAngle, moveAng: f.moveAng, walk: f.walkPhase, moving: f.moving, weapon: f.weapon, player: f.isPlayer, flash: f.hitFlash, swingT: f.swingT, recoilT: f.recoilT });
+  if(f.shieldT > 0){ c.fillStyle = 'rgba(100,181,246,.16)'; c.beginPath(); c.arc(f.x, f.y - 4, 34, 0, 7); c.fill(); c.strokeStyle = 'rgba(100,181,246,.95)'; c.lineWidth = 3; c.stroke(); }
+  if(f.bounty){ c.font = '17px sans-serif'; c.textAlign = 'center'; c.fillText('👑', f.x, f.y - 52); }
+  if(f.hp < 100){ c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(f.x - 18, f.y - 45, 36, 5.5); c.fillStyle = f.isPlayer ? '#7be495' : '#ff8a65'; c.fillRect(f.x - 17, f.y - 44.2, 34 * clamp(f.hp, 0, 100) / 100, 3.8); }
   c.font = '800 11.5px sans-serif'; c.textAlign = 'center'; c.fillStyle = f.isPlayer ? '#ffd94d' : 'rgba(255,255,255,.88)';
-  c.fillText(f.name, f.x, f.y + 36);
+  c.fillText(f.name, f.x, f.y + 34);
 }
 function render(){
   const city = matchCity || cityById(SAVE.city);
@@ -933,6 +1126,7 @@ function render(){
     if(b.sign){ ctx.fillStyle = '#ffd94d'; ctx.font = '900 17px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(city.name.toUpperCase(), b.x + b.w/2, b.y + b.h/2 + 6); }
   }
   for(const l of lootArr) if(!l.taken && inView(l.x, l.y, 40)) drawLoot(ctx, l);
+  if(player && player.alive && player.petType === 'dog'){ ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; for(const l of lootArr){ if(l.taken) continue; if(Math.hypot(l.x - player.x, l.y - player.y) < 950 && inView(l.x, l.y, 40)){ ctx.globalAlpha = .55 + Math.sin(matchTime * 5 + l.x) * .35; ctx.fillText('✨', l.x, l.y - 24); } } ctx.globalAlpha = 1; }
   if(crate && crate.active){
     ctx.fillStyle = 'rgba(255,217,77,.20)'; ctx.beginPath(); ctx.arc(crate.x, crate.y, 30 + Math.sin(matchTime * 5) * 5, 0, 7); ctx.fill();
     ctx.fillStyle = 'rgba(255,217,77,.35)'; ctx.fillRect(crate.x - 3, crate.y - 190, 6, 180);
@@ -946,9 +1140,12 @@ function render(){
   ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(216,180,254,.95)'; ctx.beginPath(); ctx.arc(z.cx, z.cy, z.r, 0, 7); ctx.stroke();
   ctx.fillStyle = '#fff';
   for(const b of bullets){ ctx.fillStyle = b.col; ctx.beginPath(); ctx.arc(b.x, b.y, 3.4, 0, 7); ctx.fill(); }
+  for(const cp of corpses){ if(!inView(cp.x, cp.y, 90)) continue; drawCharacter(ctx, { x: cp.x, y: cp.y, s: 1, outfit: cp.outfit, face: cp.face, aim: cp.aim, moveAng: cp.moveAng, walk: 0, moving: false, weapon: cp.weapon, player: cp.player, flash: 0, rot: cp.rot, alpha: clamp(cp.t / cp.max, 0, 1) * 0.95 }); }
   const sorted = fighters.filter(f => f.alive).sort((a, b2) => a.y - b2.y);
-  for(const f of sorted) if(inView(f.x, f.y, 90)) drawFighter(ctx, f);
-  for(const e of effects){ ctx.globalAlpha = clamp(e.t / e.max, 0, 1); ctx.fillStyle = e.col; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.7 - e.t / e.max), 0, 7); ctx.fill(); }
+  for(const f of sorted){ if(f.pet && inView(f.pet.x, f.pet.y, 60)) drawPet(ctx, f.petType, f.pet.x, f.pet.y, 0.85, f.pet.ph, f.pet.dir); if(inView(f.x, f.y, 90)) drawFighter(ctx, f); }
+  for(const e of effects){ ctx.globalAlpha = clamp(e.t / e.max, 0, 1);
+    if(e.type === 'swing'){ ctx.strokeStyle = e.col; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(e.x, e.y, 36, e.ang - 1.15, e.ang + 1.15); ctx.stroke(); }
+    else { ctx.fillStyle = e.col; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1.7 - e.t / e.max), 0, 7); ctx.fill(); } }
   ctx.globalAlpha = 1;
   ctx.restore();
   if(crate && crate.active && player && player.alive){
@@ -969,6 +1166,7 @@ function drawMinimap(z){
   for(const b of buildings) x.fillRect(b.x * k, b.y * k, Math.max(2, b.w * k), Math.max(2, b.h * k));
   x.strokeStyle = '#fff'; x.lineWidth = 1.6; x.beginPath(); x.arc(z.cx * k, z.cy * k, Math.max(2, z.r * k), 0, 7); x.stroke();
   if(crate && crate.active){ x.fillStyle = '#ffd94d'; x.beginPath(); x.arc(crate.x * k, crate.y * k, 3.4, 0, 7); x.fill(); }
+  if(player && player.petType === 'dog'){ x.fillStyle = 'rgba(255,255,255,.85)'; for(const l of lootArr){ if(!l.taken) x.fillRect(l.x * k - 1, l.y * k - 1, 2, 2); } }
   for(const f of fighters){ if(!f.alive || f.isPlayer) continue; x.fillStyle = f.bounty ? '#ffd94d' : '#ff5252'; x.beginPath(); x.arc(f.x * k, f.y * k, f.bounty ? 3.4 : 2.2, 0, 7); x.fill(); }
   if(player && player.alive){ x.fillStyle = '#fff'; x.beginPath(); x.arc(player.x * k, player.y * k, 3.4, 0, 7); x.fill(); x.strokeStyle = '#ffd94d'; x.lineWidth = 1.6; x.stroke(); }
 }
@@ -983,12 +1181,11 @@ function drawPoster(placement, coins, win){
   const lg = x.createLinearGradient(0, 30, 0, 100); lg.addColorStop(0, '#ffe259'); lg.addColorStop(1, '#ffa751');
   x.fillStyle = lg; x.font = '900 62px sans-serif'; x.fillText('FACE ROYALE', 360, 92);
   x.fillStyle = '#9fd8ff'; x.font = '800 19px sans-serif'; x.fillText('Y O U R   F A C E .   Y O U R   C I T Y .   Y O U R   R O Y A L E .', 360, 128);
-  drawFighterBody(x, SAVE.outfit, 360, 470, 44, -0.5, true);
-  x.save(); x.lineWidth = 9; x.strokeStyle = '#ffd94d'; x.beginPath(); x.arc(360, 318, 133, 0, 7); x.stroke(); x.restore();
-  drawFaceCircle(x, currentFaceSource(), 360, 318, 128);
-  x.fillStyle = '#fff'; x.font = '900 46px sans-serif'; x.fillText(SAVE.name || 'YOU', 360, 622);
-  x.fillStyle = '#ffe259'; x.font = '900 40px sans-serif'; x.fillText(winnerTitle(win), 360, 680);
-  x.fillStyle = '#fff'; x.font = '900 64px sans-serif'; x.fillText('#' + placement + ' of 20', 360, 762);
+  if(player && player.pet) drawPet(x, player.petType, 542, 520, 2.3, 1.2, 1);
+  drawCharacter(x, { x:318, y:462, s:3.05, outfit:SAVE.outfit, face:currentFaceSource(), aim:-0.55, moveAng:0.9, walk:0.7, moving:false, weapon: player ? player.weapon : 'rifle', player:true, flash:0 });
+  x.fillStyle = '#fff'; x.font = '900 46px sans-serif'; x.fillText(SAVE.name || 'YOU', 360, 616);
+  x.fillStyle = '#ffe259'; x.font = '900 40px sans-serif'; x.fillText(winnerTitle(win), 360, 678);
+  x.fillStyle = '#fff'; x.font = '900 64px sans-serif'; x.fillText('#' + placement + ' of 20', 360, 760);
   x.fillStyle = '#c5cae9'; x.font = '800 27px sans-serif'; x.fillText('📍 ' + city.name + ' — ' + city.nick, 360, 810);
   x.font = '800 25px sans-serif'; x.fillText('🎯 ' + player.kills + ' Kills      🪙 +' + coins + ' Coins', 360, 852);
 }
@@ -1017,8 +1214,12 @@ window.__FR = {
   winNow(){ if(!player) return; fighters.forEach(f => { if(!f.isPlayer) f.alive = false; }); aliveCount = 1; endMatch(true); },
   endNow(){ if(player && player.alive) damage(player, 99999, null); },
   hurt(n){ if(player) damage(player, n, null); },
-  giveWeapon(wk){ if(player && WEAPONS[wk]){ player.weapon = wk; updateWeaponHud(); } },
-  state(){ return { screen, alive: aliveCount, time: Math.round(matchTime), playerHp: player ? Math.round(player.hp) : null, playerWeapon: player ? player.weapon : null, playerKills: player ? player.kills : 0, coins: SAVE.coins, city: SAVE.city, faceMode: SAVE.faceMode, crateActive: !!(crate && crate.active), crateDone, bountyDone }; }
+  giveWeapon(wk){ if(player && WEAPONS[wk] && !WEAPONS[wk].melee){ player.gun = wk; player.slot = 1; player.weapon = wk; updateWeaponHud(); } },
+  giveMelee(wk){ if(player && WEAPONS[wk] && WEAPONS[wk].melee){ player.melee = wk; updateWeaponHud(); } },
+  swap(){ swapWeapons(player); },
+  tp(x, y){ if(player){ player.x = x; player.y = y; player.px = x; player.py = y; } },
+  get effects(){ return effects; }, get corpses(){ return corpses; },
+  state(){ return { screen, alive: aliveCount, time: Math.round(matchTime), playerHp: player ? Math.round(player.hp) : null, playerWeapon: player ? player.weapon : null, playerGun: player ? player.gun : null, playerMelee: player ? player.melee : null, playerSlot: player ? player.slot : null, pet: SAVE.pet, playerPet: player ? player.petType : null, playerKills: player ? player.kills : 0, coins: SAVE.coins, city: SAVE.city, faceMode: SAVE.faceMode, crateActive: !!(crate && crate.active), crateDone, bountyDone }; }
 };
 </script>
 </body>
