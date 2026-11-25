@@ -8,11 +8,13 @@
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { width:100%; height:100%; overflow:hidden; background:#10131f; font-family:'Segoe UI', system-ui, -apple-system, Roboto, sans-serif; color:#fff; touch-action:none; overscroll-behavior:none; }
   #gameCanvas { position:fixed; inset:0; display:block; }
-  button { font-family:inherit; cursor:pointer; border:none; outline:none; }
+  button { font-family:inherit; cursor:pointer; border:none; outline:none; touch-action:manipulation; }
+  .visuallyHidden { position:absolute !important; left:-9999px; top:0; width:1px; height:1px; opacity:0; overflow:hidden; }
   .hidden { display:none !important; }
 
   /* ---------- generic panels ---------- */
-  .overlay { position:fixed; inset:0; z-index:20; overflow-y:auto; background:linear-gradient(180deg,#1b2140 0%,#12152a 55%,#0d0f1e 100%); }
+  .overlay { position:fixed; inset:0; z-index:20; overflow-y:auto; touch-action:pan-y; background:linear-gradient(180deg,#1b2140 0%,#12152a 55%,#0d0f1e 100%); animation:scrIn .3s ease both; }
+  @keyframes scrIn { from { opacity:0; } to { opacity:1; } }
   .wrap { max-width:520px; margin:0 auto; padding:14px 14px 40px; }
   .logo { text-align:center; font-size:44px; font-weight:900; letter-spacing:1px; line-height:0.95;
           background:linear-gradient(180deg,#ffe259,#ffa751); -webkit-background-clip:text; background-clip:text; color:transparent;
@@ -31,7 +33,53 @@
   .btn.green { background:#1f7a4d; border-color:#2fa866; }
   .btn:disabled { opacity:0.45; }
   input[type=text] { width:100%; background:#12152a; border:2px solid #39406e; border-radius:12px; color:#fff; font-size:17px; font-weight:700; padding:11px 12px; text-align:center; }
-  input[type=range] { width:100%; accent-color:#ffb52e; }
+  input[type=range] { width:100%; accent-color:#ffb52e; -webkit-appearance:none; appearance:none; background:transparent; height:36px; }
+  input[type=range]::-webkit-slider-runnable-track { height:9px; border-radius:99px; background:#39406e; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:30px; height:30px; margin-top:-10.5px; border-radius:50%; background:#ffb52e; border:3px solid #fff; box-shadow:0 2px 7px rgba(0,0,0,.45); }
+  input[type=range]::-moz-range-track { height:9px; border-radius:99px; background:#39406e; }
+  input[type=range]::-moz-range-thumb { width:26px; height:26px; border-radius:50%; background:#ffb52e; border:3px solid #fff; }
+
+  /* player identity bar (app-style top bar) */
+  .topbar2 { display:flex; align-items:center; gap:9px; margin-bottom:10px; }
+  .idchip { display:flex; align-items:center; gap:9px; background:#1d2342; border:2px solid #333b6b; border-radius:999px; padding:5px 14px 5px 6px; flex:1; min-width:0; }
+  #avatarCanvas { border-radius:50%; border:2px solid #ffd94d; background:#2c3560; flex:0 0 auto; display:block; }
+  .idchip .pname { font-weight:900; font-size:16px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .idchip .prank { font-size:11.5px; font-weight:800; color:#9fd8ff; white-space:nowrap; }
+  .topbar2 .pill { flex:0 0 auto; font-size:17px; padding:8px 15px; }
+  /* quick-nav side buttons */
+  .navRow { display:flex; gap:7px; margin-bottom:12px; }
+  .navBtn { flex:1; background:#232a4d; border:2px solid #39406e; border-radius:14px; color:#fff; font-size:20px; padding:8px 2px 6px; font-weight:900; transition:transform .08s; }
+  .navBtn:active { transform:scale(.92); }
+  .navBtn span { display:block; font-size:10px; letter-spacing:.4px; margin-top:2px; color:#c5cae9; font-weight:800; }
+  /* fighter stage card */
+  .stageCard { background:linear-gradient(180deg,#262d55,#171b36); border-color:#46508c; box-shadow:0 10px 30px rgba(0,0,0,.45), 0 0 34px rgba(255,181,46,.10); }
+  /* PLAY bar — a reserved footer of the home layout (flex column: the
+     scroll area shrinks to fit ABOVE it, so it can never cover a button) */
+  #homeScreen { display:flex; flex-direction:column; overflow:hidden; }
+  #homeScreen .wrap { flex:1 1 auto; overflow-y:auto; touch-action:pan-y; width:100%; padding-bottom:22px; }
+  #playBar { flex:0 0 auto; z-index:30; padding:12px 14px calc(10px + env(safe-area-inset-bottom, 0px)); background:#12152e; border-top:2px solid #333b6b; box-shadow:0 -8px 22px rgba(0,0,0,.35); }
+  #playBar .bigbtn { margin:0; animation:playPulse 1.7s ease-in-out infinite; }
+  @keyframes playPulse { 0%,100% { box-shadow:0 0 13px rgba(255,181,46,.35), 0 8px 18px rgba(0,0,0,.5); } 50% { box-shadow:0 0 30px rgba(255,181,46,.7), 0 8px 18px rgba(0,0,0,.5); } }
+
+  /* ---------- splash / loading screen ---------- */
+  #splashScreen { position:fixed; inset:0; z-index:80; background:radial-gradient(120% 90% at 50% 0%, #2b3468 0%, #171b36 55%, #0d0f1e 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; transition:opacity .45s ease; }
+  #splashScreen.fadeOut { opacity:0; pointer-events:none; }
+  #splashScreen .logo { font-size:66px; animation:splashPop .7s cubic-bezier(.2,1.6,.4,1) both; }
+  @keyframes splashPop { from { transform:scale(.55); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .loadWrap { width:min(78vw, 320px); margin-top:24px; }
+  .loadBar { height:14px; border-radius:99px; background:#12152a; border:2px solid #39406e; overflow:hidden; }
+  #loadFill { height:100%; width:0%; border-radius:99px; background:linear-gradient(90deg,#ffa751,#ffe259); transition:width .18s ease; }
+  .loadTxt { text-align:center; font-size:12px; font-weight:800; letter-spacing:2.5px; color:#9fd8ff; margin-top:9px; }
+  .splashTip { margin-top:24px; font-size:12.5px; color:#8f97c4; font-weight:700; text-align:center; line-height:1.55; max-width:300px; }
+  .splashVer { position:absolute; bottom:calc(14px + env(safe-area-inset-bottom, 0px)); font-size:11px; color:#5f679a; font-weight:700; letter-spacing:1.5px; }
+
+  /* ---------- pause + how-to overlays ---------- */
+  #pauseOverlay, #howOverlay { position:fixed; inset:0; z-index:40; background:rgba(8,10,22,.8); display:flex; align-items:center; justify-content:center; padding:20px; }
+  .pauseCard { width:min(88vw, 340px); background:#1d2342; border:2px solid #46508c; border-radius:20px; padding:22px 18px; text-align:center; box-shadow:0 18px 44px rgba(0,0,0,.55); }
+  .pauseCard h2 { font-size:25px; font-weight:900; letter-spacing:1px; margin-bottom:6px; }
+  .pauseCard .btn { width:100%; padding:14px; font-size:16px; margin-top:10px; }
+  .howCard { text-align:left; max-height:84vh; overflow-y:auto; touch-action:pan-y; }
+  .howCard li { margin:0 0 9px 18px; font-size:14px; line-height:1.45; font-weight:600; }
 
   /* lobby */
   #lobbyCanvas { display:block; margin:2px auto 4px; }
@@ -39,17 +87,22 @@
   .faceRow .btn { flex:1; }
   .privacy { font-size:12px; color:#8f97c4; text-align:center; margin-top:8px; line-height:1.45; }
 
-  /* city picker */
-  .cityGrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .cityCard { border-radius:14px; border:3px solid #39406e; padding:10px 10px 9px; text-align:left; color:#fff; position:relative; overflow:hidden; min-height:74px; }
-  .cityCard .cname { font-size:19px; font-weight:900; text-shadow:0 2px 4px rgba(0,0,0,.55); position:relative; z-index:2; }
-  .cityCard .cnick { font-size:12px; font-weight:700; opacity:.92; text-shadow:0 1px 3px rgba(0,0,0,.6); position:relative; z-index:2; }
+  /* city picker — map-card carousel */
+  .cityGrid { display:flex; gap:10px; overflow-x:auto; scroll-snap-type:x mandatory; padding:2px 2px 10px; touch-action:pan-x pan-y; -webkit-overflow-scrolling:touch; }
+  .cityCard { flex:0 0 72%; scroll-snap-align:center; border-radius:16px; border:3px solid #39406e; padding:14px 14px 12px; text-align:left; color:#fff; position:relative; overflow:hidden; min-height:106px; transition:transform .08s; }
+  .cityCard:active { transform:scale(.97); }
+  .cityCard .cname { font-size:25px; font-weight:900; text-shadow:0 2px 4px rgba(0,0,0,.55); position:relative; z-index:2; margin-top:16px; }
+  .cityCard .cnick { font-size:13.5px; font-weight:700; opacity:.92; text-shadow:0 1px 3px rgba(0,0,0,.6); position:relative; z-index:2; }
   .cityCard.sel { border-color:#ffd94d; box-shadow:0 0 0 2px #ffd94d inset, 0 4px 14px rgba(0,0,0,.4); }
   .cityCard .swatch { position:absolute; inset:0; opacity:.9; }
+  .cityCard .csel { display:none; position:absolute; top:8px; right:8px; z-index:3; background:#ffd94d; color:#221a00; font-size:11px; font-weight:900; border-radius:99px; padding:3px 9px; }
+  .cityCard.sel .csel { display:block; }
+  .cityCard .cgo { position:absolute; left:14px; top:10px; z-index:2; font-size:11px; font-weight:900; letter-spacing:1.5px; color:rgba(255,255,255,.85); text-shadow:0 1px 3px rgba(0,0,0,.6); }
 
   /* outfits */
-  .outfitRow { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
-  .outfit { flex:0 0 96px; background:#12152a; border:3px solid #39406e; border-radius:14px; padding:8px 6px; text-align:center; color:#fff; }
+  .outfitRow { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; touch-action:pan-x pan-y; -webkit-overflow-scrolling:touch; }
+  .outfit { flex:0 0 96px; background:#12152a; border:3px solid #39406e; border-radius:14px; padding:8px 6px; text-align:center; color:#fff; transition:transform .08s; }
+  .outfit:active { transform:scale(.94); }
   .outfit canvas { display:block; margin:0 auto 4px; }
   .outfit .oname { font-size:11.5px; font-weight:800; line-height:1.15; min-height:27px; }
   .outfit .oprice { font-size:12px; font-weight:800; color:#ffd94d; }
@@ -58,7 +111,8 @@
 
   /* pets */
   .petRow { display:flex; gap:8px; }
-  .petBtn { flex:1; background:#12152a; border:3px solid #39406e; border-radius:14px; padding:8px 4px 6px; text-align:center; color:#fff; }
+  .petBtn { flex:1; background:#12152a; border:3px solid #39406e; border-radius:14px; padding:8px 4px 6px; text-align:center; color:#fff; transition:transform .08s; }
+  .petBtn:active { transform:scale(.94); }
   .petBtn canvas { display:block; margin:0 auto 2px; }
   .petBtn .pname { font-size:13px; font-weight:900; }
   .petBtn .pperk { font-size:10.5px; font-weight:700; color:#9fd8ff; line-height:1.25; }
@@ -68,7 +122,8 @@
   .mission { display:flex; align-items:center; gap:10px; background:#12152a; border-radius:12px; padding:9px 10px; margin-bottom:8px; }
   .mission .mtxt { flex:1; font-size:14px; font-weight:700; }
   .mission .mprog { font-size:12px; color:#9fd8ff; font-weight:800; }
-  .mission .claim { background:linear-gradient(180deg,#ffe259,#ffb52e); color:#221a00; border-radius:10px; padding:8px 12px; font-weight:900; font-size:13px; }
+  .mission .claim { background:linear-gradient(180deg,#ffe259,#ffb52e); color:#221a00; border-radius:10px; padding:8px 12px; font-weight:900; font-size:13px; transition:transform .08s; }
+  .mission .claim:active { transform:scale(.94); }
   .mission .claim:disabled { background:#2c3560; color:#8f97c4; }
   .rankbar { height:12px; background:#12152a; border-radius:99px; overflow:hidden; border:2px solid #39406e; }
   .rankbar > div { height:100%; background:linear-gradient(90deg,#ffa751,#ffe259); }
@@ -84,7 +139,7 @@
   #killfeed div { background:rgba(10,12,26,.65); border-radius:8px; padding:4px 8px; margin-bottom:4px; animation:fadeout 5s forwards; }
   @keyframes fadeout { 0%,75% {opacity:1;} 100% {opacity:0;} }
   #announce { position:absolute; top:20%; left:0; right:0; text-align:center; font-size:30px; font-weight:900; letter-spacing:1px; color:#ffe259; text-shadow:0 3px 0 rgba(0,0,0,.45), 0 0 22px rgba(255,160,40,.5); opacity:0; transition:opacity .25s; padding:0 20px; }
-  #playerBar { position:absolute; left:10px; bottom:118px; width:172px; }
+  #playerBar { position:absolute; left:10px; bottom:calc(118px + env(safe-area-inset-bottom, 0px)); width:172px; }
   #hpWrap { height:16px; background:rgba(10,12,26,.75); border:2px solid rgba(255,255,255,.35); border-radius:99px; overflow:hidden; }
   #hpFill { height:100%; width:100%; background:linear-gradient(90deg,#39d353,#7be495); transition:width .15s; }
   #weaponLabel { margin-top:5px; font-weight:900; font-size:14px; text-shadow:0 2px 3px rgba(0,0,0,.7); }
@@ -92,13 +147,14 @@
   #joyBase { position:absolute; width:124px; height:124px; border-radius:50%; background:rgba(255,255,255,.10); border:2px solid rgba(255,255,255,.35); pointer-events:none; }
   #joyKnob { position:absolute; width:56px; height:56px; border-radius:50%; background:rgba(255,255,255,.45); border:2px solid rgba(255,255,255,.6); pointer-events:none; }
   .touchBtn { position:absolute; pointer-events:auto; border-radius:50%; font-weight:900; color:#fff; text-shadow:0 2px 3px rgba(0,0,0,.5); border:3px solid rgba(255,255,255,.45); }
-  #fireBtn { right:22px; bottom:96px; width:96px; height:96px; font-size:17px; background:radial-gradient(circle at 35% 30%, #ff8a7a, #d92b1f); }
-  #fireBtn:active { filter:brightness(1.25); }
-  #abilityBtn { right:132px; bottom:74px; width:64px; height:64px; font-size:12px; background:radial-gradient(circle at 35% 30%, #7ac7ff, #1f5fd9); }
+  .touchBtn:active { filter:brightness(1.25); }
+  #fireBtn { right:22px; bottom:calc(96px + env(safe-area-inset-bottom, 0px)); width:96px; height:96px; font-size:17px; background:radial-gradient(circle at 35% 30%, #ff8a7a, #d92b1f); }
+  #abilityBtn { right:132px; bottom:calc(74px + env(safe-area-inset-bottom, 0px)); width:64px; height:64px; font-size:12px; background:radial-gradient(circle at 35% 30%, #7ac7ff, #1f5fd9); }
   #abilityBtn.cd { filter:grayscale(.8) brightness(.6); }
-  #healBtn { right:34px; bottom:206px; width:58px; height:58px; font-size:12px; background:radial-gradient(circle at 35% 30%, #ff9ec4, #c2185b); }
-  #swapBtn { right:140px; bottom:152px; width:58px; height:58px; font-size:11px; background:radial-gradient(circle at 35% 30%, #ffb74d, #e65100); }
-  #muteBtn { position:absolute; top:118px; right:8px; width:42px; height:42px; border-radius:12px; background:rgba(10,12,26,.72); border:2px solid rgba(255,255,255,.25); font-size:19px; pointer-events:auto; }
+  #healBtn { right:34px; bottom:calc(206px + env(safe-area-inset-bottom, 0px)); width:58px; height:58px; font-size:12px; background:radial-gradient(circle at 35% 30%, #ff9ec4, #c2185b); }
+  #swapBtn { right:140px; bottom:calc(152px + env(safe-area-inset-bottom, 0px)); width:58px; height:58px; font-size:11px; background:radial-gradient(circle at 35% 30%, #ffb74d, #e65100); }
+  #muteBtn { position:absolute; top:126px; right:8px; width:42px; height:42px; border-radius:12px; background:rgba(10,12,26,.72); border:2px solid rgba(255,255,255,.25); font-size:19px; pointer-events:auto; }
+  #pauseBtn { position:absolute; top:176px; right:8px; width:42px; height:42px; border-radius:12px; background:rgba(10,12,26,.72); border:2px solid rgba(255,255,255,.25); font-size:16px; pointer-events:auto; }
   #desktopHint { position:absolute; bottom:8px; left:0; right:0; text-align:center; font-size:12px; color:rgba(255,255,255,.65); font-weight:700; }
 
   /* results */
@@ -109,12 +165,25 @@
   .stat .sl { font-size:11px; letter-spacing:1px; color:#9fd8ff; font-weight:800; text-transform:uppercase; }
   .rowBtns { display:flex; gap:8px; } .rowBtns .btn { flex:1; padding:14px; font-size:16px; }
 
-  #toast { position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(80px); background:#232a4d; border:2px solid #ffd94d; color:#fff; font-weight:800; padding:11px 18px; border-radius:999px; z-index:60; transition:transform .3s; font-size:14.5px; max-width:88vw; text-align:center; pointer-events:none; }
-  #toast.show { transform:translateX(-50%) translateY(0); }
+  #toast { position:fixed; left:50%; bottom:calc(108px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%) translateY(260px); opacity:0; background:#232a4d; border:2px solid #ffd94d; color:#fff; font-weight:800; padding:11px 18px; border-radius:999px; z-index:60; transition:transform .3s, opacity .3s; font-size:14.5px; max-width:88vw; text-align:center; pointer-events:none; }
+  a.btnlink { display:block; text-align:center; text-decoration:none; color:#fff; }
+  #toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
 </style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
+
+<!-- ================= SPLASH ================= -->
+<div id="splashScreen">
+  <div class="logo">FACE<br>ROYALE</div>
+  <div class="tagline">YOUR FACE. YOUR CITY. YOUR ROYALE.</div>
+  <div class="loadWrap">
+    <div class="loadBar"><div id="loadFill"></div></div>
+    <div class="loadTxt" id="loadTxt">LOADING…</div>
+  </div>
+  <div class="splashTip">💡 Tip: put YOUR photo on your fighter — it is cropped on your phone only and never uploaded anywhere.</div>
+  <div class="splashVer">FACE ROYALE · v3</div>
+</div>
 
 <!-- ================= HUD ================= -->
 <div id="hud" class="hidden">
@@ -126,6 +195,7 @@
   <div id="killfeed"></div>
   <div id="announce"></div>
   <button id="muteBtn">🔊</button>
+  <button id="pauseBtn">⏸️</button>
   <div id="playerBar">
     <div id="hpWrap"><div id="hpFill"></div></div>
     <div id="weaponLabel">🔫 Old Pistol</div>
@@ -139,22 +209,67 @@
   <div id="desktopHint" class="hidden">WASD / Arrows to move · Hold SPACE or mouse to fire · Q / Right-click / 🔀 = Swap weapon · E = Shield · H = Heal</div>
 </div>
 
+<!-- ================= PAUSE ================= -->
+<div id="pauseOverlay" class="hidden">
+  <div class="pauseCard">
+    <h2>⏸️ PAUSED</h2>
+    <div style="color:#9fd8ff;font-weight:700;font-size:13.5px">Take a breath, fighter.</div>
+    <button class="btn green" id="resumeBtn">▶ &nbsp;Resume</button>
+    <button class="btn" id="restartBtn">🔁 &nbsp;Restart Match</button>
+    <button class="btn" id="quitBtn">🏠 &nbsp;Quit to Home</button>
+  </div>
+</div>
+
+<!-- ================= HOW TO PLAY ================= -->
+<div id="howOverlay" class="hidden">
+  <div class="pauseCard howCard">
+    <h2 style="text-align:center">❓ HOW TO PLAY</h2>
+    <ul>
+      <li>🕹️ Drag your <b>left thumb</b> on the left side of the screen — that's your joystick.</li>
+      <li>🔴 Hold <b>FIRE</b> to shoot. Your fighter auto-aims at the nearest enemy in range.</li>
+      <li>🔀 <b>SWAP</b> switches between your gun and a melee weapon (🔪 Knife / 🪓 Axe). Get close and hold FIRE to swing!</li>
+      <li>❤️ <b>HEAL</b> uses a medkit (+55 HP). 🛡️ <b>SHIELD</b> blocks most damage for 3 seconds.</li>
+      <li>🟣 Stay inside the <b>purple zone circle</b> — outside it, you take damage!</li>
+      <li>🎁 Grab the <b>Mega Crate</b> at 0:30 and hunt the 👑 <b>Bounty</b> at 2:30 for bonus coins.</li>
+      <li>🐾 Your <b>pet</b> helps you: Cat = speed · Dog = finds loot · Panda = slowly heals you.</li>
+      <li>🏆 Be the <b>Last Face Standing</b> out of 20 fighters to win the Royale!</li>
+    </ul>
+    <button class="btn green" id="howClose">✔ &nbsp;Got it!</button>
+  </div>
+</div>
+
 <!-- ================= HOME ================= -->
 <div id="homeScreen" class="overlay">
   <div class="wrap">
-    <div class="logo">FACE<br>ROYALE</div>
+    <div class="logo" style="font-size:32px">FACE ROYALE</div>
     <div class="tagline">YOUR FACE. YOUR CITY. YOUR ROYALE.</div>
-    <div class="topbar">
+    <div class="topbar2">
+      <div class="idchip">
+        <canvas id="avatarCanvas" width="46" height="46"></canvas>
+        <div style="min-width:0">
+          <div class="pname" id="pName">YOU</div>
+          <div class="prank" id="pRank">🏆 Bronze · 0 RP</div>
+        </div>
+      </div>
       <div class="pill gold">🪙 <span id="coinCount">0</span></div>
+    </div>
+    <div class="topbar">
       <div class="pill blue">🏆 <span id="rankName">Bronze</span> · <span id="rpCount">0</span> RP</div>
       <div class="pill">🏅 Wins: <span id="winCount">0</span></div>
+    </div>
+    <div class="navRow">
+      <button class="navBtn" id="navOutfit">👕<span>Outfits</span></button>
+      <button class="navBtn" id="navPet">🐾<span>Pets</span></button>
+      <button class="navBtn" id="navMission">🎯<span>Missions</span></button>
+      <button class="navBtn" id="navDaily">🎁<span>Daily</span></button>
+      <button class="navBtn" id="navHow">❓<span>How to Play</span></button>
     </div>
     <div class="card">
       <div class="rankbar"><div id="rankFill" style="width:0%"></div></div>
       <div style="font-size:12px;color:#8f97c4;font-weight:700;margin-top:6px" id="rankNext">Next rank: Silver at 120 RP</div>
     </div>
 
-    <div class="card">
+    <div class="card stageCard" id="cardFighter">
       <h3>⭐ Your Fighter</h3>
       <canvas id="lobbyCanvas" width="240" height="270"></canvas>
       <input type="text" id="nameInput" maxlength="16" placeholder="Your fighter name">
@@ -163,7 +278,7 @@
         <button class="btn green" id="photoBtn">📸 Use My Photo</button>
         <button class="btn" id="cartoonBtn">😀 Cartoon Faces</button>
       </div>
-      <input type="file" id="photoInput" accept="image/*" class="hidden">
+      <input type="file" id="photoInput" accept="image/*" class="visuallyHidden">
       <div id="zoomRow" class="hidden" style="margin-top:10px">
         <div style="font-size:12.5px;font-weight:800;color:#9fd8ff">ZOOM YOUR FACE</div>
         <input type="range" id="zoomSlider" min="100" max="220" value="100">
@@ -171,23 +286,23 @@
       <div class="privacy">🔒 Your photo is cropped <b>on your phone only</b> — it is never uploaded anywhere. A photo is always optional.</div>
     </div>
 
-    <div class="card">
-      <h3>🌍 Choose Your City</h3>
+    <div class="card" id="cardCity">
+      <h3>🌍 Choose Your City — swipe ◀ ▶</h3>
       <div class="cityGrid" id="cityGrid"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="cardOutfit">
       <h3>👕 Outfits (your face always stays visible!)</h3>
       <div class="outfitRow" id="outfitRow"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="cardPet">
       <h3>🐾 Your Pet Companion</h3>
       <div class="petRow" id="petRow"></div>
       <div class="privacy" id="petDesc"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="cardMission">
       <h3>🎁 Daily Reward &amp; Missions</h3>
       <div class="mission">
         <div class="mtxt">Daily reward<br><span class="mprog">Come back every day!</span></div>
@@ -196,9 +311,9 @@
       <div id="missionList"></div>
     </div>
 
-    <button class="bigbtn" id="playBtn">▶ &nbsp;PLAY&nbsp; ▶</button>
     <div class="privacy">20 fighters drop in. Loot. Survive the shrinking zone.<br>Be the <b>Last Face Standing</b>! 🏆</div>
   </div>
+  <div id="playBar"><button class="bigbtn" id="playBtn">▶ &nbsp;PLAY&nbsp; ▶</button></div>
 </div>
 
 <!-- ================= RESULTS ================= -->
@@ -212,7 +327,7 @@
       <div class="stat"><div class="sv" id="stKills">0</div><div class="sl">Kills</div></div>
       <div class="stat"><div class="sv" id="stCoins">+0</div><div class="sl">Coins</div></div>
     </div>
-    <a id="posterDownload" download="face-royale-poster.png" style="text-decoration:none"><button class="btn" style="width:100%;padding:13px">⬇️ Save My Poster</button></a>
+    <a id="posterDownload" class="btn btnlink" download="face-royale-poster.png" style="padding:13px">⬇️ Save My Poster</a>
     <div style="height:10px"></div>
     <div class="rowBtns">
       <button class="btn" id="homeBtn">🏠 Home</button>
@@ -622,14 +737,33 @@ const MISSIONS = [
 function drawLobby(){
   const c = $('lobbyCanvas'), ctx = c.getContext('2d');
   ctx.clearRect(0,0,240,270);
-  const g = ctx.createRadialGradient(120,120,20,120,130,170); g.addColorStop(0,'#2c3560'); g.addColorStop(1,'#171b36');
+  // dramatic stage: night-sky gradient, city skyline, spotlight beams
+  const g = ctx.createLinearGradient(0,0,0,270); g.addColorStop(0,'#252c5c'); g.addColorStop(.6,'#1a1f42'); g.addColorStop(1,'#11142b');
   ctx.fillStyle = g; rr(ctx,4,4,232,262,18); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.beginPath(); ctx.ellipse(118,182,98,54,0,0,7); ctx.fill();
+  ctx.save(); rr(ctx,4,4,232,262,18); ctx.clip();
+  ctx.fillStyle = 'rgba(9,11,24,.6)';
+  const sil = [[8,118,26,84],[38,98,20,104],[62,128,30,74],[148,108,24,94],[176,94,20,108],[200,122,32,80]];
+  sil.forEach(b2 => ctx.fillRect(b2[0], b2[1], b2[2], b2[3]));
+  ctx.fillStyle = 'rgba(255,217,77,.55)';
+  sil.forEach((b2, bi) => { for(let wy=0; wy<4; wy++) for(let wx=0; wx<2; wx++){ if((bi*7+wy*3+wx)%3===0) ctx.fillRect(b2[0]+5+wx*10, b2[1]+10+wy*17, 4, 6); } });
+  ctx.fillStyle = 'rgba(255,240,190,.10)';
+  ctx.beginPath(); ctx.moveTo(16,4); ctx.lineTo(54,4); ctx.lineTo(114,198); ctx.lineTo(64,198); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(186,4); ctx.lineTo(224,4); ctx.lineTo(176,198); ctx.lineTo(126,198); ctx.fill();
+  // lit podium the fighter stands on
+  ctx.fillStyle = 'rgba(255,181,46,.17)'; ctx.beginPath(); ctx.ellipse(118,197,103,43,0,0,7); ctx.fill();
+  ctx.fillStyle = '#2c3560'; ctx.beginPath(); ctx.ellipse(118,193,94,36,0,0,7); ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = '#ffd94d'; ctx.stroke();
+  ctx.fillStyle = '#232a4d'; ctx.beginPath(); ctx.ellipse(118,187,80,29,0,0,7); ctx.fill();
+  ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(255,217,77,.55)'; ctx.stroke();
+  ctx.restore();
   // full-body fighter: photo head + outfit body + held weapon, pet beside him
-  drawPet(ctx, SAVE.pet || 'cat', 188, 210, 1.5, 1.2, 1);
+  drawPet(ctx, SAVE.pet || 'cat', 188, 208, 1.5, 1.2, 1);
   drawCharacter(ctx, { x:102, y:160, s:1.85, outfit:SAVE.outfit, face:currentFaceSource(), aim:-0.55, moveAng:0.9, walk:0.7, moving:false, weapon:'pistol', player:true, flash:0 });
-  ctx.fillStyle = '#fff'; ctx.font = '900 19px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText(SAVE.name || 'YOU', 120, 252);
+  // name plate
+  ctx.fillStyle = 'rgba(10,12,26,.82)'; rr(ctx,42,232,156,28,9); ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = '#ffd94d'; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = '900 16px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(SAVE.name || 'YOU', 120, 251);
 }
 function refreshHome(){
   $('coinCount').textContent = SAVE.coins;
@@ -640,6 +774,9 @@ function refreshHome(){
     $('rankFill').style.width = clamp((SAVE.rp-cur)/(nxt-cur)*100, 0, 100) + '%';
     $('rankNext').textContent = 'Next rank: ' + RANKS[rk+1].name + ' at ' + nxt + ' RP';
   } else { $('rankFill').style.width = '100%'; $('rankNext').textContent = 'MAX RANK — Diamond! 💎'; }
+  const av = $('avatarCanvas'); if(av){ const ax = av.getContext('2d'); ax.clearRect(0,0,46,46); drawFaceCircle(ax, currentFaceSource(), 23, 23, 20.5); }
+  const pn = $('pName'); if(pn) pn.textContent = SAVE.name || 'YOU';
+  const pr = $('pRank'); if(pr) pr.textContent = '🏆 ' + RANKS[rk].name + ' · ' + SAVE.rp + ' RP';
   if(document.activeElement !== $('nameInput')) $('nameInput').value = SAVE.name || '';
   $('zoomRow').classList.toggle('hidden', SAVE.faceMode !== 'photo');
   $('zoomSlider').value = Math.round((SAVE.photoZoom || 1) * 100);
@@ -653,7 +790,7 @@ function buildCityGrid(){
   const grid = $('cityGrid'); grid.innerHTML = '';
   CITIES.forEach(city => {
     const b = document.createElement('button'); b.className = 'cityCard'; b.dataset.city = city.id;
-    b.innerHTML = '<div class="swatch" style="background:linear-gradient(135deg,'+city.ground+' 55%,'+city.roof[0]+')"></div><div class="cname">'+city.name+'</div><div class="cnick">'+city.nick+'</div>';
+    b.innerHTML = '<div class="swatch" style="background:linear-gradient(135deg,'+city.ground+' 55%,'+city.roof[0]+')"></div><div class="cgo">🗺️ ARENA</div><div class="csel">✔ PICKED</div><div class="cname">'+city.name+'</div><div class="cnick">'+city.nick+'</div>';
     b.onclick = () => { SAVE.city = city.id; persist(); SFX.click(); refreshHome(); };
     grid.appendChild(b);
   });
@@ -720,7 +857,23 @@ $('playBtn').onclick = () => { SFX.click(); startMatch(); };
 $('homeBtn').onclick = () => { SFX.click(); showHome(); };
 $('againBtn').onclick = () => { SFX.click(); startMatch(); };
 $('muteBtn').onclick = () => { SAVE.muted = !SAVE.muted; persist(); $('muteBtn').textContent = SAVE.muted ? '🔇' : '🔊'; };
-function showHome(){ $('resultsScreen').classList.add('hidden'); $('hud').classList.add('hidden'); $('homeScreen').classList.remove('hidden'); screen = 'home'; refreshHome(); }
+/* pause */
+let paused = false;
+function setPaused(p){ if(screen !== 'match' || matchOver) p = false; paused = p; $('pauseOverlay').classList.toggle('hidden', !p); }
+$('pauseBtn').onclick = () => { if(screen === 'match' && !matchOver){ SFX.click(); setPaused(true); } };
+$('resumeBtn').onclick = () => { SFX.click(); setPaused(false); };
+$('restartBtn').onclick = () => { SFX.click(); setPaused(false); startMatch(); };
+$('quitBtn').onclick = () => { SFX.click(); setPaused(false); matchOver = true; showHome(); };
+document.addEventListener('visibilitychange', () => { if(document.hidden && screen === 'match' && !matchOver) setPaused(true); });
+/* home quick-nav + how-to */
+function scrollToCard(id){ const el = $(id); if(el) el.scrollIntoView({ behavior:'smooth', block:'start' }); }
+$('navOutfit').onclick = () => { SFX.click(); scrollToCard('cardOutfit'); };
+$('navPet').onclick = () => { SFX.click(); scrollToCard('cardPet'); };
+$('navMission').onclick = () => { SFX.click(); scrollToCard('cardMission'); };
+$('navDaily').onclick = () => { SFX.click(); scrollToCard('cardMission'); };
+$('navHow').onclick = () => { SFX.click(); $('howOverlay').classList.remove('hidden'); };
+$('howClose').onclick = () => { SFX.click(); $('howOverlay').classList.add('hidden'); };
+function showHome(){ $('resultsScreen').classList.add('hidden'); $('hud').classList.add('hidden'); $('pauseOverlay').classList.add('hidden'); $('howOverlay').classList.add('hidden'); paused = false; $('homeScreen').classList.remove('hidden'); screen = 'home'; refreshHome(); }
 /* ================= MATCH ENGINE ================= */
 let screen = 'home';
 const canvas = $('gameCanvas'), ctx = canvas.getContext('2d');
@@ -791,6 +944,7 @@ function makeFighter(x, y, isPlayer, name, persKey, faceSrc, outfitIdx){
     healT: 0, shieldT: 0, shieldCd: 0, crateChaser: false, bounty: false, hitFlash: 0, id: fighters.length };
 }
 function startMatch(){
+  paused = false; $('pauseOverlay').classList.add('hidden');
   matchCity = cityById(SAVE.city);
   genWorld(matchCity); buildZoneCenters(); spawnLoot(48);
   fighters = []; bullets = []; effects = []; corpses = []; crate = null; crateDone = false; bountyDone = false; bountyId = -1; bountyBonus = 0;
@@ -1063,7 +1217,7 @@ function winnerTitle(win){
   return ['So close — go again!', 'The zone is ruthless!', 'GG! Loot faster next time!'][irand(0, 2)];
 }
 function endMatch(win){
-  if(matchOver) return; matchOver = true;
+  if(matchOver) return; matchOver = true; paused = false; $('pauseOverlay').classList.add('hidden');
   const placement = win ? 1 : (playerPlacement || aliveCount);
   const placeCoins = placement === 1 ? 120 : placement === 2 ? 80 : placement === 3 ? 60 : placement <= 5 ? 45 : placement <= 10 ? 30 : placement <= 15 ? 18 : 10;
   const coins = placeCoins + player.kills * 8 + bountyBonus;
@@ -1195,8 +1349,15 @@ function loop(now){
   requestAnimationFrame(loop);
   let dt = (now - lastT) / 1000; lastT = now;
   if(dt > 0.05) dt = 0.05;
-  if(screen === 'match'){ if(!matchOver) update(dt); render(); }
+  if(screen === 'match'){ if(!matchOver && !paused) update(dt); render(); }
 }
+/* splash / loading screen — animated bar, always dismisses */
+const splashT0 = Date.now();
+let splashHidden = false;
+(function splashTick(){ const f = $('loadFill'); if(!f || splashHidden) return; const pct = Math.min(92, Math.round((Date.now() - splashT0) / 1300 * 100)); f.style.width = pct + '%'; if(pct < 92) setTimeout(splashTick, 90); })();
+function hideSplash(){ if(splashHidden) return; splashHidden = true; const s = $('splashScreen'); if(!s) return; const f = $('loadFill'); if(f) f.style.width = '100%'; const t = $('loadTxt'); if(t) t.textContent = 'READY!'; setTimeout(() => { s.classList.add('fadeOut'); setTimeout(() => { s.style.display = 'none'; }, 480); }, 240); }
+window.addEventListener('load', () => setTimeout(hideSplash, Math.max(0, 1250 - (Date.now() - splashT0))));
+setTimeout(hideSplash, 3800);
 loadSave();
 if(SAVE.faceData){ playerFaceImg = new Image(); playerFaceImg.onload = () => { if(screen === 'home') drawLobby(); }; playerFaceImg.src = SAVE.faceData; }
 buildCityGrid();
@@ -1219,6 +1380,8 @@ window.__FR = {
   swap(){ swapWeapons(player); },
   tp(x, y){ if(player){ player.x = x; player.y = y; player.px = x; player.py = y; } },
   get effects(){ return effects; }, get corpses(){ return corpses; },
+  get loot(){ return lootArr; }, get zone(){ return zoneAt(matchTime); }, get paused(){ return paused; },
+  pause(){ setPaused(true); }, resume(){ setPaused(false); },
   state(){ return { screen, alive: aliveCount, time: Math.round(matchTime), playerHp: player ? Math.round(player.hp) : null, playerWeapon: player ? player.weapon : null, playerGun: player ? player.gun : null, playerMelee: player ? player.melee : null, playerSlot: player ? player.slot : null, pet: SAVE.pet, playerPet: player ? player.petType : null, playerKills: player ? player.kills : 0, coins: SAVE.coins, city: SAVE.city, faceMode: SAVE.faceMode, crateActive: !!(crate && crate.active), crateDone, bountyDone }; }
 };
 </script>
